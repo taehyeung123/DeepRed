@@ -1,0 +1,62 @@
+# DeepRed v3.0 — Docker Compose
+# FastAPI + Nginx + Redis (DB는 Supabase 유지)
+
+services:
+  # ─── Nginx 리버스 프록시 ───
+  nginx:
+    image: nginx:alpine
+    container_name: deepred-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-var:/var/www/certbot:ro
+    depends_on:
+      - api
+    restart: always
+    networks:
+      - deepred-net
+
+  # ─── FastAPI 백엔드 ───
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: deepred-api
+    expose:
+      - "8000"
+    env_file:
+      - .env.production
+    volumes:
+      - api-logs:/app/logs
+    restart: always
+    depends_on:
+      - redis
+    networks:
+      - deepred-net
+
+  # ─── Redis (세션/캐시) ───
+  redis:
+    image: redis:7-alpine
+    container_name: deepred-redis
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - deepred-net
+
+volumes:
+  api-logs:
+  redis-data:
+  certbot-etc:
+  certbot-var:
+
+
+networks:
+  deepred-net:
+    driver: bridge

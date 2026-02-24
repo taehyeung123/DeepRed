@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Build output
+dist/
+build/
+.next/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel/
+
+# Test files & artifacts
+test_*.py
+test_*.json
+test_*.sh
+*.txt
+!requirements.txt
+
+# Docker cache
+server/__pycache__/
+server/avatars.json
+
+# Gemini agent
+.gemini/

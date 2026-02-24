@@ -1,0 +1,317 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* DeepRed Design Tokens */
+
+  /* Colors — improved dark mode readability */
+  --dr-bg: #0d0d18;
+  --dr-bg-elevated: #151526;
+  --dr-bg-card: #1c1c32;
+  --dr-bg-hover: #282845;
+  --dr-accent: #E02050;
+  --dr-accent-soft: rgba(224, 32, 80, 0.22);
+  --dr-success: #4ade80;
+  --dr-warning: #fcd34d;
+  --dr-error: #fb7185;
+  --dr-info: #7dd3fc;
+  --dr-text: #f8f8fc;
+  --dr-text-secondary: #d0d0e0;
+  --dr-text-muted: #9a9ab4;
+  --dr-text-dim: #8585a0;
+  --dr-glass-bg: rgba(28, 28, 50, 0.80);
+  --dr-glass-border: rgba(255, 255, 255, 0.16);
+  --dr-border: rgba(255, 255, 255, 0.16);
+  --dr-border-light: rgba(255, 255, 255, 0.12);
+  --dr-accent-gradient: linear-gradient(135deg, #E02050, #b91c3c);
+
+  /* Department Colors */
+  --dept-coo: #E02050;
+  --dept-planning: #5b9cf6;
+  --dept-security: #7b8fa6;
+  --dept-design: #f472b6;
+  --dept-content: #f5a623;
+  --dept-marketing: #4ade80;
+  --dept-business: #fb923c;
+  --dept-automation: #22d3ee;
+  --dept-data: #818cf8;
+  --dept-research: #2dd4bf;
+  --dept-support: #c084fc;
+
+  /* Typography */
+  --font-sans: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Radius */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-badge: 9999px;
+
+  /* Shadows */
+  --shadow-glow-accent: 0 0 24px rgba(220, 20, 60, 0.25);
+  --shadow-glow-success: 0 0 16px rgba(52, 211, 153, 0.3);
+  --shadow-glow-warning: 0 0 16px rgba(251, 191, 36, 0.3);
+
+  /* Standard theme variables for compatibility */
+  --font-size: 16px;
+  --background: var(--dr-bg);
+  --foreground: var(--dr-text);
+  --card: var(--dr-bg-card);
+  --card-foreground: var(--dr-text);
+  --popover: var(--dr-bg-elevated);
+  --popover-foreground: var(--dr-text);
+  --primary: var(--dr-accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--dr-bg-elevated);
+  --secondary-foreground: var(--dr-text);
+  --muted: var(--dr-bg-hover);
+  --muted-foreground: var(--dr-text-muted);
+  --accent: var(--dr-accent);
+  --accent-foreground: #ffffff;
+  --destructive: var(--dr-error);
+  --destructive-foreground: #ffffff;
+  --border: var(--dr-glass-border);
+  --input: var(--dr-bg-card);
+  --ring: var(--dr-accent);
+  --radius: var(--radius-card);
+
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-[var(--dr-bg)] text-[var(--dr-text)];
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay — disabled for readability */
+  /* body::before removed — was dimming all content */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+    color: var(--dr-text);
+  }
+
+  h2 {
+    font-size: 17px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+    color: var(--dr-text);
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+    color: var(--dr-text);
+  }
+
+  h4 {
+    font-size: 14px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+    color: var(--dr-text);
+  }
+
+  /* Glass card effect — improved visibility */
+  .glass-card {
+    background: var(--dr-glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Status dot animations */
+  @keyframes pulse-dot {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .status-dot-pulse {
+    animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Legacy utility classes for OrganizationChart */
+  .glass-card-strong {
+    background: rgba(22, 22, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .dr-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+  }
+
+  .dr-avatar-sm {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .dr-avatar-md {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .dr-avatar-lg {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .dr-avatar-xl {
+    width: 56px;
+    height: 56px;
+    font-size: 26px;
+  }
+
+  .dr-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .dr-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--dr-text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dr-btn-icon:hover {
+    background: var(--dr-bg-hover);
+    color: var(--dr-text);
+  }
+
+  .dr-input {
+    background: var(--dr-bg-card);
+    border: 1px solid var(--dr-border);
+    border-radius: 8px;
+    color: var(--dr-text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .dr-input:focus {
+    border-color: var(--dr-accent);
+  }
+
+  .dr-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .dr-status-online {
+    background: var(--dr-success);
+  }
+
+  .dr-status-busy {
+    background: var(--dr-warning);
+  }
+
+  .dr-status-offline {
+    background: var(--dr-text-muted);
+  }
+
+  .dr-card-elevated {
+    background: var(--dr-bg-elevated);
+    border: 1px solid var(--dr-border);
+    border-radius: var(--radius-card);
+    padding: 16px;
+  }
+}
