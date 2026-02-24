@@ -379,7 +379,7 @@ def call_gemini(system_prompt: str, user_message: str,
 def health():
     db_stats = db.get_stats()
     mem_stats = memory.get_stats()
-    return {
+    result = {
         "status": "ok",
         "version": "3.0.0",
         "employees": len(EMPLOYEES),
@@ -390,6 +390,12 @@ def health():
         "memory": mem_stats,
         "llm_router": get_router_stats(),
     }
+    try:
+        from github_reader import get_cache_stats
+        result["github_reader"] = get_cache_stats()
+    except Exception:
+        result["github_reader"] = {"status": "not loaded"}
+    return result
 
 
 @app.get("/api/employees")
@@ -536,7 +542,11 @@ def _chat_sujin(req: ChatRequest, agent: dict):
 
 사장님과 1:1 대화 중입니다. 자연스럽게, 진짜 사람처럼 대화하세요.
 형식적인 보고체가 아니라, 실제 임원이 CEO에게 말하듯이 자연스럽게.
-상황에 따라 짧게 답할 수도, 길게 분석할 수도 있습니다."""
+상황에 따라 짧게 답할 수도, 길게 분석할 수도 있습니다.
+
+당신은 회사의 GitHub 리포지토리에 읽기 권한이 있습니다.
+[코드 참조] 섹션이 제공되면, 해당 코드를 자연스럽게 참조하여 답변하세요.
+코드를 그대로 복붙하지 말고, 핵심을 파악해서 사람 말투로 설명하세요."""
 
     # ─── 3단계: Claude에 압축된 컨텍스트만 전송 ───
     human = f"{context}\n\n사장님: {req.message}" if context else f"사장님: {req.message}"

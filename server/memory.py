@@ -266,6 +266,15 @@ def build_context_for_claude(employee_id: str, current_message: str,
         for m in related_memories:
             parts.append(f"- {m['content'][:150]}")
     
+    # 2.5. 코드 컨텍스트 (GitHub 리포 참조)
+    try:
+        from github_reader import get_code_context
+        code_ctx = get_code_context(current_message)
+        if code_ctx:
+            parts.append(f"\n{code_ctx}")
+    except Exception as e:
+        print(f"⚠️ 코드 컨텍스트 로드 실패: {e}")
+    
     # 3. 히스토리가 짧으면 (15개 이하) 압축 없이 직접 전달
     history = full_history or []
     if len(history) <= 15:
