@@ -9,10 +9,11 @@ import { employees as baseEmployees, departments, DEPT_NAME_TO_ID, type Employee
 import {
   Users, Network, X, MessageCircle, Award,
   Briefcase, Clock, ChevronDown, Star, Activity,
-  TrendingUp, Target
+  TrendingUp, Target, Send
 } from 'lucide-react';
 import { AvatarRenderer } from './avatar/AvatarRenderer';
 import { useEmployees } from '../hooks/useEmployees';
+import { useNavigate } from 'react-router';
 
 // ─── 부서 컬러 맵 ─────────────────────────
 const DEPT_COLORS: Record<string, string> = {
@@ -23,7 +24,7 @@ const DEPT_COLORS: Record<string, string> = {
 };
 
 // ─── 직원 상세 프로필 모달 ─────────────────
-function EmployeeProfileModal({ employee, onClose }: { employee: Employee; onClose: () => void }) {
+function EmployeeProfileModal({ employee, onClose, onDM }: { employee: Employee; onClose: () => void; onDM?: (id: string) => void }) {
   const deptId = DEPT_NAME_TO_ID[employee.department] || '';
   const color = DEPT_COLORS[deptId] || employee.departmentColor || '#6b7280';
   const dept = departments.find(d => d.id === deptId);
@@ -89,6 +90,13 @@ function EmployeeProfileModal({ employee, onClose }: { employee: Employee; onClo
               <div className="flex items-center gap-2 mt-2">
                 <span className="dr-status-dot dr-status-online" style={{ width: 7, height: 7 }} />
                 <span style={{ fontSize: 12, color: 'var(--dr-success)' }}>근무중</span>
+                <button
+                  onClick={() => onDM?.(employee.id)}
+                  className="flex items-center gap-1 ml-3 px-3 py-1 rounded-lg text-white text-[11px] font-medium transition-colors hover:opacity-90"
+                  style={{ background: 'var(--dr-accent)' }}
+                >
+                  <Send size={11} /> DM 보내기
+                </button>
               </div>
             </div>
           </div>
@@ -421,6 +429,11 @@ export function OrganizationChart() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const employees = useEmployees();
+  const navigate = useNavigate();
+
+  const handleDM = (empId: string) => {
+    navigate(`/messenger?employee=${empId}`);
+  };
 
   const filtered = deptFilter === 'all'
     ? employees
@@ -498,6 +511,7 @@ export function OrganizationChart() {
           <EmployeeProfileModal
             employee={selectedEmployee}
             onClose={() => setSelectedEmployee(null)}
+            onDM={handleDM}
           />
         )}
       </AnimatePresence>

@@ -2,7 +2,7 @@
 import { Search, FileText, Loader2, RefreshCw, Calendar, User, Tag } from 'lucide-react';
 import { motion } from 'motion/react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE } from '../lib/api';
 
 interface Document {
   id: string;
@@ -146,8 +146,8 @@ export function Deliverables() {
               key={f.key}
               onClick={() => { setTypeFilter(f.key); setSearchResults(null); }}
               className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors border ${typeFilter === f.key
-                  ? 'bg-[var(--dr-accent)]/15 text-[var(--dr-accent)] border-[var(--dr-accent)]/30'
-                  : 'text-[var(--dr-text-muted)] border-[var(--dr-glass-border)] hover:text-[var(--dr-text)]'
+                ? 'bg-[var(--dr-accent)]/15 text-[var(--dr-accent)] border-[var(--dr-accent)]/30'
+                : 'text-[var(--dr-text-muted)] border-[var(--dr-glass-border)] hover:text-[var(--dr-text)]'
                 }`}
             >
               {f.label}

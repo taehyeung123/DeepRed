@@ -79,6 +79,17 @@ export function Announcements() {
   const pinnedAnnouncements = announcements.filter((a) => a.pinned);
   const regularAnnouncements = announcements.filter((a) => !a.pinned);
 
+  const handleLike = async (id: string) => {
+    // Optimistic update
+    setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, likes: a.likes + 1 } : a));
+    try {
+      await fetch(`${API_BASE}/api/announcements/${id}/like`, { method: 'POST' });
+    } catch {
+      // Revert on failure
+      setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, likes: a.likes - 1 } : a));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -214,7 +225,7 @@ export function Announcements() {
                 </h2>
               </div>
               {pinnedAnnouncements.map((announcement, idx) => (
-                <AnnouncementCard key={announcement.id} announcement={announcement} index={idx} />
+                <AnnouncementCard key={announcement.id} announcement={announcement} index={idx} onLike={handleLike} />
               ))}
             </div>
           )}
@@ -222,7 +233,7 @@ export function Announcements() {
           {/* Regular Announcements */}
           <div className="space-y-3">
             {regularAnnouncements.map((announcement, idx) => (
-              <AnnouncementCard key={announcement.id} announcement={announcement} index={idx} />
+              <AnnouncementCard key={announcement.id} announcement={announcement} index={idx} onLike={handleLike} />
             ))}
           </div>
         </>
@@ -234,9 +245,11 @@ export function Announcements() {
 function AnnouncementCard({
   announcement,
   index,
+  onLike,
 }: {
   announcement: Announcement;
   index: number;
+  onLike?: (id: string) => void;
 }) {
   const config = typeConfig[announcement.type] || typeConfig.notice;
   const Icon = config.icon;
@@ -310,7 +323,10 @@ function AnnouncementCard({
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1.5 text-[var(--dr-text-muted)] hover:text-[var(--dr-accent)] transition-colors">
+              <button
+                onClick={() => onLike?.(announcement.id)}
+                className="flex items-center gap-1.5 text-[var(--dr-text-muted)] hover:text-[var(--dr-accent)] transition-colors"
+              >
                 <Heart className="w-4 h-4" />
                 <span className="text-[12px]">{announcement.likes}</span>
               </button>

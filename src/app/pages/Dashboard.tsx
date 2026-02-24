@@ -1,11 +1,11 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Target, CheckCircle, Percent, Users, Brain, AlertTriangle, Lightbulb, Flame, Loader2, RefreshCw } from 'lucide-react';
-import { employees as baseEmployees, getDepartmentStats } from '../../data/employees';
+import { TrendingUp, TrendingDown, Target, CheckCircle, Percent, Users, Brain, AlertTriangle, Lightbulb, Flame, Loader2, RefreshCw, FolderKanban } from 'lucide-react';
+import { employees as baseEmployees } from '../../data/employees';
 import { motion } from 'motion/react';
 import { AvatarRenderer } from '../components/avatar/AvatarRenderer';
 import { useEmployees } from '../hooks/useEmployees';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE } from '../lib/api';
 
 interface BriefingData {
   greeting: string;
@@ -35,20 +35,22 @@ export function Dashboard() {
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [serverOnline, setServerOnline] = useState(false);
 
-  const totalContribution = employees.reduce((sum, emp) => sum + emp.contribution, 0);
-  const totalTasks = employees.reduce((sum, emp) => sum + emp.todayTasks, 0);
-  const avgAccuracy = Math.round(
-    employees.reduce((sum, emp) => sum + emp.accuracy, 0) / employees.length
-  );
-  const activeEmployees = employees.filter(
-    (emp) => emp.status === 'working' || emp.status === 'meeting'
-  ).length;
+  // ─── 실시간 KPI (from /api/stats/*) ───
+  const [liveKPI, setLiveKPI] = useState<any>(null);
+  const [liveDepts, setLiveDepts] = useState<any[]>([]);
+  const [livePerformers, setLivePerformers] = useState<any[]>([]);
+  const [liveProjects, setLiveProjects] = useState<any[]>([]);
 
-  const topPerformers = [...employees]
-    .sort((a, b) => b.contribution - a.contribution)
-    .slice(0, 5);
+  // fallback to static data if API hasn't loaded yet
+  const totalContribution = liveKPI?.total_contribution ?? employees.reduce((sum, emp) => sum + emp.contribution, 0);
+  const totalTasks = liveKPI?.total_tasks ?? employees.reduce((sum, emp) => sum + emp.todayTasks, 0);
+  const avgAccuracy = liveKPI?.accuracy ?? Math.round(employees.reduce((sum, emp) => sum + emp.accuracy, 0) / employees.length);
+  const activeEmployees = liveKPI?.active_employees ?? employees.filter(e => e.status === 'working' || e.status === 'meeting').length;
+  const totalEmployees = liveKPI?.total_employees ?? 16;
+  const trends = liveKPI?.trends ?? { contribution: '+0%', tasks: '+0%', accuracy: '+0%', active: `${activeEmployees}/${totalEmployees}` };
 
-  const departmentStats = getDepartmentStats();
+  const topPerformers = livePerformers.length > 0 ? livePerformers : [...employees].sort((a, b) => b.contribution - a.contribution).slice(0, 5);
+  const departmentStats = liveDepts.length > 0 ? liveDepts : [];
 
   // Department color map for activity feed
   const DEPT_COLORS: Record<string, string> = {
@@ -69,6 +71,19 @@ export function Dashboard() {
           .then(data => setActivities(data.logs || []))
           .catch(() => { })
           .finally(() => setActivitiesLoading(false));
+
+        // Load live stats
+        Promise.allSettled([
+          fetch(`${API_BASE}/api/stats/kpi`).then(r => r.json()),
+          fetch(`${API_BASE}/api/stats/departments`).then(r => r.json()),
+          fetch(`${API_BASE}/api/stats/top-performers?limit=5`).then(r => r.json()),
+          fetch(`${API_BASE}/api/stats/projects`).then(r => r.json()),
+        ]).then(([kpi, depts, perf, proj]) => {
+          if (kpi.status === 'fulfilled') setLiveKPI(kpi.value);
+          if (depts.status === 'fulfilled') setLiveDepts(depts.value);
+          if (perf.status === 'fulfilled') setLivePerformers(perf.value);
+          if (proj.status === 'fulfilled') setLiveProjects(proj.value);
+        });
       })
       .catch(() => {
         setServerOnline(false);
@@ -120,10 +135,10 @@ export function Dashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <KPICard icon={Target} label="전체 기여도" value={totalContribution.toLocaleString()} unit="pt" trend="+12%" trendUp={true} color="var(--dr-accent)" />
-        <KPICard icon={CheckCircle} label="완료 태스크" value={totalTasks.toString()} unit="건" trend="+8%" trendUp={true} color="var(--dr-success)" />
-        <KPICard icon={Percent} label="평균 정확도" value={avgAccuracy.toString()} unit="%" trend="+2%" trendUp={true} color="var(--dr-info)" />
-        <KPICard icon={Users} label="활동 직원" value={activeEmployees.toString()} unit="/16" trend="stable" trendUp={true} color="var(--dr-warning)" />
+        <KPICard icon={Target} label="전체 기여도" value={totalContribution.toLocaleString()} unit="pt" trend={trends.contribution} trendUp={true} color="var(--dr-accent)" />
+        <KPICard icon={CheckCircle} label="완료 태스크" value={totalTasks.toString()} unit="건" trend={trends.tasks} trendUp={true} color="var(--dr-success)" />
+        <KPICard icon={Percent} label="평균 정확도" value={avgAccuracy.toString()} unit="%" trend={trends.accuracy} trendUp={true} color="var(--dr-info)" />
+        <KPICard icon={Users} label="활동 직원" value={activeEmployees.toString()} unit={`/${totalEmployees}`} trend="stable" trendUp={true} color="var(--dr-warning)" />
       </div>
 
       <div className="grid grid-cols-3 gap-6">
@@ -248,6 +263,59 @@ export function Dashboard() {
               ))}
             </div>
           </div>
+
+          {/* Project Progress */}
+          {liveProjects.length > 0 && (
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-[var(--dr-info)]/10 flex items-center justify-center">
+                  <FolderKanban className="w-4 h-4 text-[var(--dr-info)]" />
+                </div>
+                <h2 className="text-[15px] font-semibold text-[var(--dr-text)]">
+                  프로젝트 현황
+                </h2>
+              </div>
+              <div className="space-y-4">
+                {liveProjects.map((proj: any) => (
+                  <div key={proj.name} className="glass-card p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[18px]">{proj.icon}</span>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[var(--dr-text)]">{proj.name}</p>
+                          <p className="text-[10px] text-[var(--dr-text-muted)]">{proj.description}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--dr-success)]/10 text-[var(--dr-success)] font-medium">
+                          {proj.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="flex-1 h-2 bg-[var(--dr-bg-hover)] rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${proj.progress}%` }}
+                          transition={{ duration: 1.2, ease: 'easeOut' }}
+                          className="h-full rounded-full bg-gradient-to-r from-[var(--dr-accent)] to-[var(--dr-info)]"
+                        />
+                      </div>
+                      <span className="text-[12px] font-mono font-bold text-[var(--dr-accent)]">{proj.progress}%</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-[var(--dr-text-muted)]">
+                        배정 인원: {proj.assigned_count}명
+                      </span>
+                      <span className="text-[10px] text-[var(--dr-text-muted)]">
+                        완료 태스크: {proj.total_tasks}건 · 기여도: {proj.total_contribution}pt
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column */}
@@ -310,23 +378,31 @@ export function Dashboard() {
               탑 퍼포머
             </h2>
             <div className="space-y-3">
-              {topPerformers.map((emp, idx) => (
-                <div key={emp.id} className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--dr-accent)] to-[#b91c3c] flex items-center justify-center text-white text-[11px] font-bold">
-                    {idx + 1}
+              {topPerformers.map((perf: any, idx: number) => {
+                // live API returns {id, name, role, contribution, ...}
+                const emp = employees.find(e => e.id === (perf.id || perf.employee_id));
+                return (
+                  <div key={perf.id || idx} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--dr-accent)] to-[#b91c3c] flex items-center justify-center text-white text-[11px] font-bold">
+                      {idx + 1}
+                    </div>
+                    {emp ? (
+                      <AvatarRenderer config={emp.avatar} size="sm" bgColor={`${emp.departmentColor}20`} />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[var(--dr-bg-hover)]" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-[var(--dr-text)]">{perf.name}</p>
+                      <p className="text-[10px] text-[var(--dr-text-muted)]">{perf.role}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-mono font-medium" style={{ color: emp?.departmentColor || 'var(--dr-accent)' }}>
+                        {perf.contribution}pt
+                      </p>
+                    </div>
                   </div>
-                  <AvatarRenderer config={emp.avatar} size="sm" bgColor={`${emp.departmentColor}20`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-[var(--dr-text)]">{emp.name}</p>
-                    <p className="text-[10px] text-[var(--dr-text-muted)]">{emp.role}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[11px] font-mono font-medium" style={{ color: emp.departmentColor }}>
-                      {emp.contribution}pt
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

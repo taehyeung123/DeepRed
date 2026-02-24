@@ -33,6 +33,7 @@ from llm_router import route_call, get_router_stats, is_claude_available
 from scheduler import start_scheduler, stop_scheduler, run_job_now, get_scheduler_status, is_scheduler_available
 from tools import get_available_tools, run_tool
 from notifications import notifier
+from stats_tracker import StatsTracker
 
 api_key = os.getenv("GOOGLE_API_KEY")
 if api_key:
@@ -240,6 +241,9 @@ PROJECTS = {
 
 # ─── 활동 로그 (서버 메모리) ──────────────────────────────
 activity_log: list[dict] = []
+
+# ─── 실시간 활동 추적 시스템 ──────────────────────────────
+tracker = StatsTracker(EMPLOYEES)
 
 # 프로젝트 배정 상태
 project_assignments: dict[str, list[str]] = {
@@ -493,6 +497,9 @@ def chat(req: ChatRequest):
     db.save_work_log(agent["id"], agent["name"], agent["department"],
                      log_entry["action"], "report", "💬")
 
+    # 실시간 통계 기록
+    tracker.record_activity(agent["id"], "chat")
+
     # 대화 기억 저장
     conv_summary = f"CEO가 {agent['name']}({agent['role']})에게 '{req.message[:80]}'에 대해 물어봄. 응답: {response[:200]}"
     memory.remember(conv_summary, source_type="chat", employee_id=agent["id"])
@@ -558,6 +565,9 @@ def _chat_sujin(req: ChatRequest, agent: dict):
     activity_log.insert(0, log_entry)
     db.save_work_log("sujin", "수진", agent["department"],
                      log_entry["action"], "report", "💬")
+
+    # 실시간 통계 기록 (수진)
+    tracker.record_activity("sujin", "chat")
 
     # ─── 대화 기억 저장 ───
     conv_summary = f"CEO가 수진(COO)에게 '{req.message[:80]}'에 대해 물어봄. 응답: {response[:200]}"
@@ -648,7 +658,7 @@ def group_chat(req: GroupChatRequest):
             content = content.strip()
         results = json.loads(content)
 
-        # 활동 로그
+        # 활동 로그 + 실시간 통계
         for r in (results if isinstance(results, list) else []):
             emp = next((e for e in EMPLOYEES if e["name"] == r.get("name")), None)
             if emp:
@@ -662,6 +672,7 @@ def group_chat(req: GroupChatRequest):
                     "icon": "💬",
                     "department": emp["department"],
                 })
+                tracker.record_activity(emp["id"], "group_chat")
 
         return {"responses": results if isinstance(results, list) else [{"name": "시스템", "message": "형식 오류"}]}
     except json.JSONDecodeError:
@@ -735,6 +746,12 @@ def run_meeting(req: MeetingRequest):
         "icon": "🚨",
         "department": "control",
     })
+
+    # 실시간 통계: 전원 회의 참석
+    for r in responses:
+        emp = next((e for e in EMPLOYEES if e["name"] == r.get("name")), None)
+        if emp:
+            tracker.record_activity(emp["id"], "meeting")
 
     # 회의록 생성
     time.sleep(2)
@@ -838,6 +855,9 @@ def generate_briefing():
         })
         db.save_work_log("sujin", "수진", "control",
                          "CEO 일일 브리핑 생성 완료", "report", "📊")
+
+        # 실시간 통계 기록
+        tracker.record_activity("sujin", "briefing")
 
         # 브리핑 문서 저장
         db.save_document(
@@ -947,6 +967,7 @@ CEO가 업무를 지시하면, 관련 부서 직원 2~5명을 선별하여 순�
             "department": "control",
         })
         db.save_work_log("sujin", "수진", "control", collab_action, "report", "🤝")
+        tracker.record_activity("sujin", "collab")
 
         for step in result.get("steps", []):
             emp = next((e for e in EMPLOYEES if e["name"] == step.get("employee")), None)
@@ -965,6 +986,7 @@ CEO가 업무를 지시하면, 관련 부서 직원 2~5명을 선별하여 순�
                 db.save_work_log(emp["id"], emp["name"], emp["department"],
                                  step_action, TYPE_MAP.get(emp["department"], "report"),
                                  ICON_MAP.get(emp["department"], "📋"))
+                tracker.record_activity(emp["id"], "collab")
 
         # 협업 결과 문서 저장
         db.save_document(
@@ -1095,44 +1117,103 @@ def create_announcement(req: AnnouncementRequest):
     return entry
 
 
-# ─── 엔드포인트: 출근부 ────────────────────────────────────
+# ─── 엔드포인트: 출근부 (라이브 데이터) ────────────────────
 @app.get("/api/attendance")
 def get_attendance():
-    """AI 직원 출근 현황 조회"""
-    statuses = ["working", "reporting", "meeting", "offline"]
-    weights = [0.55, 0.15, 0.15, 0.15]
-    now = datetime.now()
+    """AI 직원 출근 현황 — 실제 활동 기반"""
+    attendance = tracker.get_attendance()
+    return {"attendance": attendance, "total": len(attendance), "timestamp": datetime.now().isoformat()}
 
-    attendance = []
-    for i, emp in enumerate(EMPLOYEES):
-        # 결정론적 상태: 직원 인덱스 + 현재 시간(분) 기반
-        seed = (i * 31 + now.minute) % 100
-        if seed < 55:
-            status = "working"
-        elif seed < 70:
-            status = "reporting"
-        elif seed < 85:
-            status = "meeting"
-        else:
-            status = "offline"
 
-        # 결정론적 출근시간
-        hour = 8 + (i % 2)
-        minute = (i * 7 + 3) % 60
+# ─── 엔드포인트: 실시간 통계 ──────────────────────────────
+@app.get("/api/stats/kpi")
+def get_kpi_stats():
+    """Dashboard 실시간 KPI"""
+    return tracker.get_kpi()
 
-        attendance.append({
-            "employee_id": emp["id"],
-            "name": emp["name"],
-            "role": emp["role"],
-            "department": emp.get("department_name", emp["department"]),
-            "department_key": emp["department"],
-            "status": status,
-            "login_time": f"{hour:02d}:{minute:02d}",
-            "today_tasks": max(1, (i * 3 + 7) % 12),
-            "contribution": max(10, (i * 17 + 23) % 100),
-        })
 
-    return {"attendance": attendance, "total": len(attendance), "timestamp": now.isoformat()}
+@app.get("/api/stats/departments")
+def get_department_stats():
+    """부서별 실시간 생산성"""
+    return tracker.get_department_stats()
+
+
+@app.get("/api/stats/top-performers")
+def get_top_performers(limit: int = 5):
+    """실제 활동 기반 탑 퍼포머"""
+    return tracker.get_top_performers(limit)
+
+
+@app.get("/api/stats/projects")
+def get_project_stats():
+    """프로젝트별 실시간 진행률 (활동 기반 보정)"""
+    return tracker.get_project_progress(PROJECTS, project_assignments)
+
+
+@app.get("/api/stats/activity-history")
+def get_activity_history(days: int = 7):
+    """주간 일별 활동 히스토리"""
+    return tracker.get_activity_history(days)
+
+
+# ─── 엔드포인트: 공지사항 좋아요 ──────────────────────────
+@app.post("/api/announcements/{ann_id}/like")
+def like_announcement(ann_id: str):
+    """공지사항 좋아요 토글"""
+    for ann in _announcements:
+        if ann["id"] == ann_id:
+            ann["likes"] = ann.get("likes", 0) + 1
+            return {"id": ann_id, "likes": ann["likes"]}
+    raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다.")
+
+
+# ─── 엔드포인트: 글로벌 검색 ──────────────────────────────
+@app.get("/api/search")
+def global_search(q: str = "", limit: int = 10):
+    """직원, 문서, 공지사항 통합 검색"""
+    if not q.strip():
+        return {"results": [], "total": 0}
+
+    query = q.strip().lower()
+    results = []
+
+    # 직원 검색
+    for emp in EMPLOYEES:
+        if query in emp["name"].lower() or query in emp["role"].lower() or query in emp.get("department_name", "").lower():
+            results.append({
+                "type": "employee",
+                "id": emp["id"],
+                "title": emp["name"],
+                "subtitle": f"{emp['role']} · {emp.get('department_name', emp['department'])}",
+                "icon": "👤",
+            })
+
+    # 공지사항 검색
+    for ann in _announcements:
+        if query in ann.get("title", "").lower() or query in ann.get("content", "").lower():
+            results.append({
+                "type": "announcement",
+                "id": ann["id"],
+                "title": ann["title"],
+                "subtitle": ann.get("content", "")[:60],
+                "icon": "📢",
+            })
+
+    # 문서 검색 (DB)
+    try:
+        docs = db.search_documents(query, limit=5)
+        for doc in docs:
+            results.append({
+                "type": "document",
+                "id": doc.get("id", ""),
+                "title": doc.get("title", "문서"),
+                "subtitle": doc.get("content", "")[:60],
+                "icon": "📄",
+            })
+    except Exception:
+        pass
+
+    return {"results": results[:limit], "total": len(results)}
 
 
 # ─── 엔드포인트: 아바타 저장/불러오기 ──────────────────────

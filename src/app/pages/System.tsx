@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE } from '../lib/api';
 
 interface HealthData {
   status: string;

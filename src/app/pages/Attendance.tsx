@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AvatarRenderer } from '../components/avatar/AvatarRenderer';
 import { useEmployees } from '../hooks/useEmployees';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, ChevronDown, Users, Zap, CheckCircle } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -18,12 +18,34 @@ interface AttendanceEntry {
   contribution: number;
 }
 
+interface DayHistory {
+  date: string;
+  weekday: string;
+  is_today: boolean;
+  summary: {
+    total_contribution: number;
+    total_tasks: number;
+    active_employees: number;
+    total_employees: number;
+  };
+  employees: {
+    employee_id: string;
+    name: string;
+    department_key: string;
+    contribution: number;
+    tasks: number;
+    status: string;
+  }[];
+}
+
 export function Attendance() {
   const employees = useEmployees();
   const [activeTab, setActiveTab] = useState<'current' | 'calendar'>('current');
   const [attendance, setAttendance] = useState<AttendanceEntry[]>([]);
+  const [activityHistory, setActivityHistory] = useState<DayHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [serverOnline, setServerOnline] = useState(false);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   const statusLabels: Record<string, string> = {
     working: '근무중',
@@ -46,12 +68,23 @@ export function Attendance() {
     research: '#ec4899', customer: '#14b8a6',
   };
 
+  const WEEKDAY_KOREAN: Record<string, string> = {
+    Mon: '월', Tue: '화', Wed: '수', Thu: '목',
+    Fri: '금', Sat: '토', Sun: '일',
+  };
+
   const fetchAttendance = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/attendance`);
       const data = await res.json();
       setAttendance(data.attendance || []);
       setServerOnline(true);
+
+      // Also fetch activity history for calendar tab
+      fetch(`${API_BASE}/api/stats/activity-history?days=7`)
+        .then(r => r.json())
+        .then(hist => setActivityHistory(hist))
+        .catch(() => { });
     } catch {
       setServerOnline(false);
     } finally {
@@ -61,22 +94,26 @@ export function Attendance() {
 
   useEffect(() => { fetchAttendance(); }, [fetchAttendance]);
 
-  const getDaysOfWeek = () => {
-    const days = [];
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - today.getDay() + i);
-      days.push(date);
-    }
-    return days;
-  };
-
-  const daysOfWeek = getDaysOfWeek();
-
-  // Merge attendance data with employee avatar data
   const getEmployeeForAttendance = (entry: AttendanceEntry) => {
     return employees.find(e => e.id === entry.employee_id);
+  };
+
+  const getEmployeeById = (id: string) => {
+    return employees.find(e => e.id === id);
+  };
+
+  const getActivityLevel = (contribution: number): 'high' | 'medium' | 'low' | 'none' => {
+    if (contribution >= 50) return 'high';
+    if (contribution >= 20) return 'medium';
+    if (contribution > 0) return 'low';
+    return 'none';
+  };
+
+  const activityLevelColors = {
+    high: 'var(--dr-success)',
+    medium: 'var(--dr-info)',
+    low: 'var(--dr-warning)',
+    none: 'var(--dr-text-muted)',
   };
 
   return (
@@ -89,7 +126,6 @@ export function Attendance() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Refresh */}
           <button
             onClick={fetchAttendance}
             className="p-2 rounded-lg hover:bg-[var(--dr-bg-hover)] transition text-[var(--dr-text-muted)]"
@@ -98,7 +134,6 @@ export function Attendance() {
             <RefreshCw className="w-4 h-4" />
           </button>
 
-          {/* Tabs */}
           <div className="flex gap-2 p-1 bg-[var(--dr-bg-card)] rounded-lg border border-[var(--dr-glass-border)]">
             <button
               onClick={() => setActiveTab('current')}
@@ -138,24 +173,12 @@ export function Attendance() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[var(--dr-glass-border)] bg-[var(--dr-bg-elevated)]">
-                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">
-                    직원
-                  </th>
-                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">
-                    부서
-                  </th>
-                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">
-                    상태
-                  </th>
-                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">
-                    출근 시간
-                  </th>
-                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">
-                    오늘 태스크
-                  </th>
-                  <th className="text-right p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">
-                    기여도
-                  </th>
+                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">직원</th>
+                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">부서</th>
+                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">상태</th>
+                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">출근 시간</th>
+                  <th className="text-left p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">오늘 태스크</th>
+                  <th className="text-right p-4 text-[11px] font-semibold text-[var(--dr-text-muted)] uppercase tracking-wider">기여도</th>
                 </tr>
               </thead>
               <tbody>
@@ -186,10 +209,7 @@ export function Attendance() {
                       <td className="p-4">
                         <span
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium"
-                          style={{
-                            backgroundColor: `${deptColor}15`,
-                            color: deptColor,
-                          }}
+                          style={{ backgroundColor: `${deptColor}15`, color: deptColor }}
                         >
                           {entry.department}
                         </span>
@@ -200,31 +220,19 @@ export function Attendance() {
                             className="w-2 h-2 rounded-full status-dot-pulse"
                             style={{ backgroundColor: statusColors[entry.status] || statusColors.offline }}
                           />
-                          <span
-                            className="text-[12px] font-medium"
-                            style={{ color: statusColors[entry.status] || statusColors.offline }}
-                          >
+                          <span className="text-[12px] font-medium" style={{ color: statusColors[entry.status] || statusColors.offline }}>
                             {statusLabels[entry.status] || entry.status}
                           </span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="text-[12px] font-mono text-[var(--dr-text-secondary)]">
-                          {entry.login_time}
-                        </span>
+                        <span className="text-[12px] font-mono text-[var(--dr-text-secondary)]">{entry.login_time}</span>
                       </td>
                       <td className="p-4">
-                        <span className="text-[12px] font-mono text-[var(--dr-text)]">
-                          {entry.today_tasks}건
-                        </span>
+                        <span className="text-[12px] font-mono text-[var(--dr-text)]">{entry.today_tasks}건</span>
                       </td>
                       <td className="p-4 text-right">
-                        <span
-                          className="text-[13px] font-mono font-semibold"
-                          style={{ color: deptColor }}
-                        >
-                          {entry.contribution}pt
-                        </span>
+                        <span className="text-[13px] font-mono font-semibold" style={{ color: deptColor }}>{entry.contribution}pt</span>
                       </td>
                     </motion.tr>
                   );
@@ -234,66 +242,175 @@ export function Attendance() {
           </div>
         </div>
       ) : (
-        <div className="glass-card p-6">
-          <div className="grid grid-cols-7 gap-4">
-            {daysOfWeek.map((day, idx) => {
-              const isToday = day.toDateString() === new Date().toDateString();
+        /* ─── 주간 캘린더 탭 ─────────────────── */
+        <div className="space-y-4">
+          {/* Weekly overview cards */}
+          <div className="grid grid-cols-7 gap-3">
+            {activityHistory.map((day, idx) => {
+              const isExpanded = expandedDay === day.date;
+              const avgContrib = day.summary.total_contribution / Math.max(day.summary.total_employees, 1);
+              const level = getActivityLevel(avgContrib);
+              const activeRatio = day.summary.active_employees / Math.max(day.summary.total_employees, 1);
 
               return (
-                <div
-                  key={idx}
-                  className={`glass-card p-4 ${isToday ? 'border-2 border-[var(--dr-accent)]' : ''}`}
+                <motion.div
+                  key={day.date}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => setExpandedDay(isExpanded ? null : day.date)}
+                  className={`glass-card p-4 cursor-pointer transition-all hover:scale-[1.02] ${day.is_today ? 'border-2 border-[var(--dr-accent)] shadow-lg' : ''
+                    } ${isExpanded ? 'ring-2 ring-[var(--dr-accent)]/50' : ''}`}
                 >
-                  <div className="text-center mb-4">
-                    <p className="text-[11px] text-[var(--dr-text-muted)] mb-1">
-                      {day.toLocaleDateString('ko-KR', { weekday: 'short' })}
+                  <div className="text-center mb-3">
+                    <p className="text-[11px] text-[var(--dr-text-muted)]">
+                      {WEEKDAY_KOREAN[day.weekday] || day.weekday}
                     </p>
-                    <p
-                      className={`text-[16px] font-semibold ${isToday ? 'text-[var(--dr-accent)]' : 'text-[var(--dr-text)]'}`}
-                    >
-                      {day.getDate()}
+                    <p className={`text-[18px] font-bold ${day.is_today ? 'text-[var(--dr-accent)]' : 'text-[var(--dr-text)]'}`}>
+                      {new Date(day.date).getDate()}
                     </p>
                   </div>
 
-                  {/* Activity indicators */}
-                  <div className="space-y-1">
-                    {attendance.slice(0, 5).map((entry) => (
-                      <div
-                        key={entry.employee_id}
-                        className="h-1.5 rounded-full"
-                        style={{
-                          backgroundColor: `${DEPT_COLORS[entry.department_key] || '#888'}${isToday ? '40' : '20'}`,
-                        }}
-                      />
-                    ))}
+                  <div className="w-full h-2 rounded-full bg-[var(--dr-bg-hover)] overflow-hidden mb-3">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.round(activeRatio * 100)}%` }}
+                      transition={{ duration: 0.8, delay: idx * 0.05 }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: activityLevelColors[level] }}
+                    />
                   </div>
 
-                  {isToday && (
-                    <div className="mt-3 text-center">
-                      <span className="text-[10px] text-[var(--dr-accent)] font-medium">
-                        오늘
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3 h-3 text-[var(--dr-text-muted)]" />
+                        <span className="text-[10px] text-[var(--dr-text-muted)]">참여</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-medium text-[var(--dr-text)]">
+                        {day.summary.active_employees}/{day.summary.total_employees}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-[var(--dr-text-muted)]" />
+                        <span className="text-[10px] text-[var(--dr-text-muted)]">기여</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-medium text-[var(--dr-text)]">
+                        {day.summary.total_contribution}pt
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-[var(--dr-text-muted)]" />
+                        <span className="text-[10px] text-[var(--dr-text-muted)]">태스크</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-medium text-[var(--dr-text)]">
+                        {day.summary.total_tasks}건
+                      </span>
+                    </div>
+                  </div>
+
+                  {day.is_today && (
+                    <div className="mt-2 text-center">
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-[var(--dr-accent)] text-white font-semibold">TODAY</span>
+                    </div>
                   )}
-                </div>
+
+                  <div className="mt-2 flex justify-center">
+                    <ChevronDown className={`w-3 h-3 text-[var(--dr-text-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </motion.div>
               );
             })}
           </div>
 
+          {/* Expanded day detail */}
+          <AnimatePresence>
+            {expandedDay && (() => {
+              const day = activityHistory.find(d => d.date === expandedDay);
+              if (!day) return null;
+              const sortedEmployees = [...day.employees].sort((a, b) => b.contribution - a.contribution);
+
+              return (
+                <motion.div
+                  key={expandedDay}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="glass-card overflow-hidden"
+                >
+                  <div className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[14px] font-semibold text-[var(--dr-text)]">
+                        {new Date(day.date).toLocaleDateString('ko-KR', {
+                          month: 'long', day: 'numeric', weekday: 'long',
+                        })} 활동 상세
+                      </h3>
+                      <div className="flex items-center gap-3 text-[11px] text-[var(--dr-text-muted)]">
+                        <span>참여 {day.summary.active_employees}/{day.summary.total_employees}</span>
+                        <span>총 기여 {day.summary.total_contribution}pt</span>
+                        <span>태스크 {day.summary.total_tasks}건</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {sortedEmployees.map((empActivity) => {
+                        const emp = getEmployeeById(empActivity.employee_id);
+                        const deptColor = DEPT_COLORS[empActivity.department_key] || '#888';
+                        const maxContribution = Math.max(...sortedEmployees.map(e => e.contribution), 1);
+                        const barWidth = (empActivity.contribution / maxContribution) * 100;
+
+                        return (
+                          <motion.div
+                            key={empActivity.employee_id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--dr-bg-hover)] transition-colors"
+                          >
+                            {emp ? (
+                              <AvatarRenderer config={emp.avatar} size="sm" bgColor={`${deptColor}20`} />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-[var(--dr-bg-card)]" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] font-medium text-[var(--dr-text)] truncate">{empActivity.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-[var(--dr-text-muted)]">{empActivity.tasks}건</span>
+                                  <span className="text-[10px] font-mono font-semibold" style={{ color: deptColor }}>
+                                    {empActivity.contribution}pt
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-full h-1.5 bg-[var(--dr-bg-hover)] rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${barWidth}%` }}
+                                  transition={{ duration: 0.6 }}
+                                  className="h-full rounded-full"
+                                  style={{ backgroundColor: empActivity.contribution > 0 ? deptColor : 'transparent' }}
+                                />
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()}
+          </AnimatePresence>
+
           {/* Legend */}
-          <div className="mt-6 flex items-center gap-4 justify-center">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-1.5 rounded-full bg-[var(--dr-success)]" />
-              <span className="text-[11px] text-[var(--dr-text-muted)]">높은 활동</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-1.5 rounded-full bg-[var(--dr-info)]" />
-              <span className="text-[11px] text-[var(--dr-text-muted)]">보통 활동</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-1.5 rounded-full bg-[var(--dr-text-muted)]" />
-              <span className="text-[11px] text-[var(--dr-text-muted)]">낮은 활동</span>
-            </div>
+          <div className="flex items-center gap-6 justify-center py-2">
+            {Object.entries({ '높은 활동': 'high', '보통 활동': 'medium', '낮은 활동': 'low', '부재': 'none' }).map(([label, level]) => (
+              <div key={level} className="flex items-center gap-2">
+                <div className="w-4 h-1.5 rounded-full" style={{ backgroundColor: activityLevelColors[level as keyof typeof activityLevelColors] }} />
+                <span className="text-[11px] text-[var(--dr-text-muted)]">{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Activity, X, Check, CheckCheck } from 'lucide-react';
+import { Search, Bell, Activity, X, Check, CheckCheck, User, FileText, Megaphone } from 'lucide-react';
 import { employees } from '../../data/employees';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE } from '../lib/api';
+import { useNavigate } from 'react-router';
 
 interface Notification {
   id: string;
@@ -15,13 +15,27 @@ interface Notification {
   timestamp: string;
 }
 
+interface SearchResult {
+  type: string;
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+}
+
 export function Header() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showPanel, setShowPanel] = useState(false);
   const [serverOnline, setServerOnline] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigate = useNavigate();
 
   const activeCount = employees.filter(
     (emp) => emp.status === 'working' || emp.status === 'meeting'
@@ -56,10 +70,44 @@ export function Header() {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setShowPanel(false);
       }
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearch(false);
+      }
     };
-    if (showPanel) document.addEventListener('mousedown', handleClick);
+    if (showPanel || showSearch) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [showPanel]);
+  }, [showPanel, showSearch]);
+
+  // Debounced search
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!val.trim()) {
+      setSearchResults([]);
+      setShowSearch(false);
+      return;
+    }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(val)}&limit=8`);
+        const data = await res.json();
+        setSearchResults(data.results || []);
+        setShowSearch(true);
+      } catch {
+        setSearchResults([]);
+      }
+    }, 300);
+  };
+
+  const handleResultClick = (r: SearchResult) => {
+    setShowSearch(false);
+    setSearchQuery('');
+    if (r.type === 'employee') navigate(`/messenger?employee=${r.id}`);
+    else if (r.type === 'announcement') navigate('/announcements');
+    else if (r.type === 'document') navigate('/deliverables');
+  };
+
+  const RESULT_ICONS: Record<string, typeof User> = { employee: User, announcement: Megaphone, document: FileText };
 
   const markRead = async (id: string) => {
     try {
@@ -96,17 +144,45 @@ export function Header() {
   return (
     <header className="h-16 border-b border-[var(--dr-glass-border)] bg-[var(--dr-bg-elevated)] flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
-        <div className="relative">
+        <div className="relative" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--dr-text-muted)]" />
           <input
             type="text"
-            placeholder="검색..."
-            className="w-64 h-9 pl-10 pr-4 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
+            placeholder="직원, 문서, 공지사항 검색..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => searchResults.length > 0 && setShowSearch(true)}
+            className="w-72 h-9 pl-10 pr-4 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
                      rounded-lg text-[13px] text-[var(--dr-text)]
                      placeholder:text-[var(--dr-text-muted)]
                      focus:outline-none focus:ring-2 focus:ring-[var(--dr-accent)]/30 focus:border-[var(--dr-accent)]
                      transition-all"
           />
+          {showSearch && searchResults.length > 0 && (
+            <div className="absolute left-0 top-11 w-80 max-h-80 overflow-y-auto glass-card border border-[var(--dr-glass-border)] rounded-xl shadow-2xl z-50">
+              {searchResults.map((r, idx) => {
+                const RIcon = RESULT_ICONS[r.type] || FileText;
+                return (
+                  <button
+                    key={`${r.type}-${r.id}-${idx}`}
+                    onClick={() => handleResultClick(r)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--dr-bg-hover)] transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[var(--dr-accent)]/10 flex items-center justify-center flex-shrink-0">
+                      <RIcon className="w-4 h-4 text-[var(--dr-accent)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-[var(--dr-text)] truncate">{r.title}</p>
+                      <p className="text-[10px] text-[var(--dr-text-muted)] truncate">{r.subtitle}</p>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--dr-bg-hover)] text-[var(--dr-text-muted)]">
+                      {r.type === 'employee' ? '직원' : r.type === 'announcement' ? '공지' : '문서'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
