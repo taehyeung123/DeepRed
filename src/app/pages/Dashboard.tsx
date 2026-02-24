@@ -41,15 +41,15 @@ export function Dashboard() {
   const [livePerformers, setLivePerformers] = useState<any[]>([]);
   const [liveProjects, setLiveProjects] = useState<any[]>([]);
 
-  // fallback to static data if API hasn't loaded yet
-  const totalContribution = liveKPI?.total_contribution ?? employees.reduce((sum, emp) => sum + emp.contribution, 0);
-  const totalTasks = liveKPI?.total_tasks ?? employees.reduce((sum, emp) => sum + emp.todayTasks, 0);
-  const avgAccuracy = liveKPI?.accuracy ?? Math.round(employees.reduce((sum, emp) => sum + emp.accuracy, 0) / employees.length);
-  const activeEmployees = liveKPI?.active_employees ?? employees.filter(e => e.status === 'working' || e.status === 'meeting').length;
+  // No fallback to static data — show 0 when API hasn't loaded
+  const totalContribution = liveKPI?.total_contribution ?? 0;
+  const totalTasks = liveKPI?.total_tasks ?? 0;
+  const avgAccuracy = liveKPI?.accuracy ?? 0;
+  const activeEmployees = liveKPI?.active_employees ?? 0;
   const totalEmployees = liveKPI?.total_employees ?? 16;
-  const trends = liveKPI?.trends ?? { contribution: '+0%', tasks: '+0%', accuracy: '+0%', active: `${activeEmployees}/${totalEmployees}` };
+  const trends = liveKPI?.trends ?? { contribution: '-', tasks: '-', accuracy: '-', active: `${activeEmployees}/${totalEmployees}` };
 
-  const topPerformers = livePerformers.length > 0 ? livePerformers : [...employees].sort((a, b) => b.contribution - a.contribution).slice(0, 5);
+  const topPerformers = livePerformers.length > 0 ? livePerformers : [];
   const departmentStats = liveDepts.length > 0 ? liveDepts : [];
 
   // Department color map for activity feed

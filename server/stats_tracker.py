@@ -283,8 +283,7 @@ class StatsTracker:
         return result
 
     def get_activity_history(self, days: int = 7) -> list[dict]:
-        """주간 일별 활동 히스토리 — 직원별 일별 요약"""
-        import random
+        """주간 일별 활동 히스토리 — 실제 데이터만 (가상 데이터 없음)"""
         today = datetime.now()
         history = []
 
@@ -308,18 +307,17 @@ class StatsTracker:
                     tasks = stats.tasks_completed
                     status = stats.get_status()
                 else:
-                    # 이전 날: 패턴 기반 합리적 추정
-                    # 주말은 40% 확률, 평일은 85% 확률로 활동
-                    is_weekend = date.weekday() >= 5
-                    idx = list(self._employees.keys()).index(emp_id) if emp_id in self._employees else 0
-                    seed = hash(f"{emp_id}-{date_str}") % 100
-                    work_chance = 40 if is_weekend else 85
-
-                    if seed < work_chance:
-                        random.seed(hash(f"{emp_id}-{date_str}-v2"))
-                        contribution = random.randint(10, 80)
-                        tasks = random.randint(1, 6)
-                        status = "working"
+                    # 이전 날: 기록된 히스토리가 있으면 사용, 없으면 0
+                    day_history = None
+                    if stats:
+                        for h in stats.daily_history:
+                            if h.get("date") == date_str:
+                                day_history = h
+                                break
+                    if day_history:
+                        contribution = day_history.get("contribution", 0)
+                        tasks = day_history.get("tasks", 0)
+                        status = "working" if contribution > 0 else "offline"
                     else:
                         contribution = 0
                         tasks = 0

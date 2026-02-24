@@ -228,14 +228,12 @@ PROJECTS = {
         "icon": "📱",
         "description": "반려동물 케어 앱",
         "status": "운영중",
-        "progress": 95,
     },
     "레드랭크": {
         "name": "레드랭크",
         "icon": "🌐",
         "description": "AI 블로그 최적화 플랫폼",
         "status": "MVP 개발중",
-        "progress": 75,
     },
 }
 
@@ -251,53 +249,7 @@ project_assignments: dict[str, list[str]] = {
     "레드랭크": [e["id"] for e in EMPLOYEES if "레드랭크" in e.get("projects", [])],
 }
 
-ACTIVITY_TEMPLATES = [
-    {"dept": "security", "actions": [
-        "Firebase 보안 규칙 감사 완료 ✅", "API 키 순환 점검 — 이상 없음",
-        "OWASP Top 10 자동 스캔 완료", "Vercel 환경변수 노출 검사 통과",
-    ]},
-    {"dept": "data", "actions": [
-        "DAU/MAU 리텐션 리포트 생성", "A/B 테스트 결과 분석 완료",
-        "코호트 분석 — 7일차 리텐션 42%", "매출 대시보드 자동 갱신",
-    ]},
-    {"dept": "marketing", "actions": [
-        "인스타그램 캠페인 성과 집계", "네이버 검색순위 모니터링 완료",
-        "키워드 '반려동물 관리' 상위 5개 추적 중", "SNS 콘텐츠 캘린더 자동 생성",
-    ]},
-    {"dept": "content", "actions": [
-        "블로그 원고 3건 리라이팅 완료", "앱스토어 설명문 AB 변형 생성",
-        "주간 콘텐츠 성과 분석 완료", "푸시 알림 문구 최적화 — CTR +8%",
-    ]},
-    {"dept": "automation", "actions": [
-        "CI/CD 파이프라인 전체 통과 🟢", "Vercel 자동 배포 성공",
-        "QA 회귀 테스트 23/23 통과", "서버 응답시간 모니터링 — 정상",
-    ]},
-    {"dept": "planning", "actions": [
-        "Sprint #12 백로그 정리 완료", "신규 기능 기획서 초안 작성",
-        "사용자 스토리 6건 정의 완료", "주간 스프린트 리뷰 리포트",
-    ]},
-    {"dept": "research", "actions": [
-        "경쟁 앱 '포잇' 신규 업데이트 분석", "반려동물 시장 트렌드 리포트",
-        "해외 유사 서비스 벤치마킹 3건", "2026 Q2 시장 전망 리포트 초안",
-    ]},
-    {"dept": "customer", "actions": [
-        "고객 문의 14건 AI 자동 응답", "앱스토어 리뷰 분석 — 평점 4.8 유지",
-        "커뮤니티 UGC 이벤트 참여율 +15%", "VoC 키워드 분석 완료",
-    ]},
-    {"dept": "design", "actions": [
-        "디자인 시스템 컴포넌트 3개 추가", "접근성(WCAG AA) 점검 — 통과",
-        "UI 프로토타입 v2.1 공유", "아이콘 세트 업데이트 완료",
-    ]},
-    {"dept": "business", "actions": [
-        "구독 매출 분석 — MRR +12%", "가격 정책 A/B 안 기안 완료",
-        "파트너십 후보 기업 3곳 리스트업", "IR 데크 초안 자동 생성",
-    ]},
-    {"dept": "control", "actions": [
-        "전체 부서 현황 취합 완료", "오전 CEO 브리핑 생성",
-        "긴급 이슈 0건 — 정상 운영", "주간 성과 리포트 준비 완료",
-    ]},
-]
-
+# 활동 로그 아이콘/타입 매핑 (실제 활동 기록 시 사용)
 ICON_MAP = {
     "security": "🔍", "data": "📊", "marketing": "📈",
     "content": "📝", "automation": "⚙️", "planning": "📋",
@@ -312,32 +264,7 @@ TYPE_MAP = {
     "business": "report", "control": "report",
 }
 
-
-def _generate_activity():
-    """랜덤 활동 로그 생성"""
-    tmpl = random.choice(ACTIVITY_TEMPLATES)
-    dept = tmpl["dept"]
-    action = random.choice(tmpl["actions"])
-    candidates = [e for e in EMPLOYEES if e["department"] == dept]
-    if not candidates:
-        return
-    emp = random.choice(candidates)
-    log_entry = {
-        "id": str(uuid.uuid4())[:8],
-        "employee_id": emp["id"],
-        "employee_name": emp["name"],
-        "timestamp": datetime.now().isoformat(),
-        "action": action,
-        "type": TYPE_MAP.get(dept, "report"),
-        "icon": ICON_MAP.get(dept, "📋"),
-        "department": dept,
-    }
-    activity_log.insert(0, log_entry)
-    if len(activity_log) > 100:
-        activity_log.pop()
-
-
-# 초기 활동 로그 없음 — 실제 활동만 기록
+# 가상 활동 생성 없음 — 실제 채팅/회의/협업/브리핑만 기록
 
 
 # ─── Gemini API 호출 ────────────────────────────────────
@@ -820,21 +747,23 @@ def generate_briefing():
 {log_text}
 
 ## 규칙
-반드시 아래 JSON 형식으로만 응답하세요:
+1. 반드시 아래 JSON 형식으로만 응답하세요.
+2. **절대 가상 데이터를 만들지 마세요.** DAU, 리텐션, 전환율, 매출 등 실제 데이터가 제공되지 않은 수치는 절대 만들거나 추정하지 마세요.
+3. 최근 활동 로그가 없으면 "아직 오늘 기록된 활동이 없습니다"라고 솔직히 말하세요.
+4. metric 필드에는 활동 로그에서 직접 확인 가능한 사실만 적으세요 (예: "채팅 3건 완료", "브리핑 1건").
+5. MVP는 실제 활동이 기록된 직원 중에서만 선정하세요. 활동이 없으면 mvp를 null로 설정하세요.
 
 {{
   "greeting": "사장님, 좋은 아침입니다. 수진입니다.",
-  "summary": "전체 현황 요약 2~3줄",
+  "summary": "전체 현황 요약 2~3줄 (실제 데이터 기반만)",
   "highlights": [
-    {{"project": "프로젝트명", "status": "상태 한줄", "metric": "+12% DAU"}},
-    {{"project": "프로젝트명", "status": "상태 한줄", "metric": "진행률 75%"}}
+    {{"project": "프로젝트명", "status": "실제 상태", "metric": "실제 활동 기반 수치만"}}
   ],
   "issues": [
-    {{"level": "warning", "message": "이슈 내용"}},
-    {{"level": "info", "message": "참고 사항"}}
+    {{"level": "info", "message": "실제 확인된 이슈만"}}
   ],
   "recommendation": "수진의 추천 액션 1줄",
-  "mvp": {{"name": "이번 주 MVP 직원 이름", "reason": "이유 한줄"}}
+  "mvp": null 또는 {{"name": "실제 활동 기반 MVP", "reason": "실제 이유"}}
 }}"""
 
     try:
@@ -890,17 +819,17 @@ def generate_briefing():
 
 
 def _fallback_briefing(error_msg: str = ""):
-    """브리핑 생성 실패 시 기본 데이터 반환"""
+    """브리핑 생성 실패 시 — 실제 데이터만 반환, 가상 데이터 없음"""
     return {
-        "greeting": "사장님, 수진입니다. 오늘의 브리핑입니다.",
-        "summary": f"현재 16명의 AI 직원이 정상 운영 중입니다. 활동 로그 {len(activity_log)}건이 기록되었습니다.",
+        "greeting": "사장님, 수진입니다.",
+        "summary": f"AI 브리핑 생성에 실패했습니다. 현재 활동 로그 {len(activity_log)}건이 기록되어 있습니다.",
         "highlights": [
-            {"project": p["name"], "status": p["status"], "metric": f"진행률 {p['progress']}%"}
+            {"project": p["name"], "status": p["status"], "metric": "활동 데이터 수집 중"}
             for p in PROJECTS.values()
         ],
-        "issues": [{"level": "info", "message": error_msg if error_msg else "특이사항 없음"}],
-        "recommendation": "현재 모든 부서가 정상 운영 중이므로, 계획대로 진행하시면 됩니다.",
-        "mvp": {"name": "태현", "reason": "보안 스캔 정확도 99% 달성"},
+        "issues": [{"level": "info", "message": error_msg if error_msg else "브리핑 생성 실패 — 잠시 후 다시 시도해주세요"}],
+        "recommendation": "잠시 후 새 브리핑을 다시 요청해주세요.",
+        "mvp": None,
     }
 
 

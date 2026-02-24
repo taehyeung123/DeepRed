@@ -55,7 +55,7 @@ export function Sidebar({ expanded, onToggle }: SidebarProps) {
   const location = useLocation();
   const { ceoAvatar, ceoName } = useAvatarStore();
   const employees = useEmployees();
-  const dmEmployees = employees.slice(0, 6);
+  const dmEmployees = employees; // 전체 16명 표시
 
   return (
     <motion.div
@@ -141,7 +141,7 @@ export function Sidebar({ expanded, onToggle }: SidebarProps) {
                   다이렉트 메시지
                 </span>
               </div>
-              <nav className="space-y-0.5 px-2">
+              <nav className="space-y-0.5 px-2 max-h-[320px] overflow-y-auto scrollbar-thin">
                 {dmEmployees.map((emp) => (
                   <Link key={emp.id} to={`/messenger?employee=${emp.id}`}>
                     <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-[var(--dr-text-secondary)] hover:bg-[var(--dr-bg-hover)] hover:text-[var(--dr-text)] transition-all duration-200">
