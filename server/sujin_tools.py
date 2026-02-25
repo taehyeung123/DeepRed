@@ -250,69 +250,84 @@ def chat_with_tools(client, system_prompt: str, user_message: str,
                     temperature: float = 0.8, max_tokens: int = 8192) -> tuple[str, str]:
     """
     Claude tool_use를 사용한 대화. 수진이 필요한 데이터를 자율적으로 조회.
-    tool 호출 시 max_tokens=400 (짧은 tool_use 블록), 최종 응답 시 max_tokens=1500 (데이터 포함 답변)
-
-    Returns:
-        (response_text, model_name)
     """
     messages = [{"role": "user", "content": user_message}]
     model = "claude-sonnet-4-20250514"
 
-    # 최대 3회 tool use 반복
-    for i in range(3):
-        response = client.messages.create(
+    # 최대 5회 tool use 반복
+    last_response = None
+    for i in range(5):
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=messages,
+                tools=SUJIN_TOOLS,
+                temperature=temperature,
+            )
+            last_response = response
+        except Exception as e:
+            print(f"⚠️ chat_with_tools 호출 실패 (round {i}): {str(e)[:200]}")
+            break
+
+        # 텍스트 추출
+        text_parts = [b.text for b in response.content if hasattr(b, "text")]
+        tool_blocks = [b for b in response.content if b.type == "tool_use"]
+
+        # tool_use가 없으면 → 최종 응답
+        if not tool_blocks:
+            text = "".join(text_parts).strip()
+            if text:
+                return text, "claude-sonnet"
+            print(f"⚠️ chat_with_tools: 텍스트 비어있음 (stop={response.stop_reason})")
+            break
+
+        # tool_use 처리
+        messages.append({"role": "assistant", "content": response.content})
+
+        tool_results = []
+        for block in tool_blocks:
+            result = execute_tool(block.name, block.input)
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": result,
+            })
+            print(f"  🔧 tool: {block.name} → {len(result)}자 결과")
+
+        messages.append({"role": "user", "content": tool_results})
+
+        # 텍스트도 함께 있었으면 tool 완료 후 최종 응답 대기
+        if text_parts and not tool_blocks:
+            text = "".join(text_parts).strip()
+            if text:
+                return text, "claude-sonnet"
+
+    # 루프 종료 후: 마지막 응답에서 텍스트 추출 시도
+    if last_response:
+        text = "".join(b.text for b in last_response.content if hasattr(b, "text")).strip()
+        if text:
+            return text, "claude-sonnet"
+
+    # 최종 시도: tool 포함한 상태로 한번 더 호출
+    try:
+        print("⚠️ chat_with_tools: 최종 재호출 시도")
+        final = client.messages.create(
             model=model,
-            max_tokens=500,  # tool 호출용 — 짧은 블록
-            system=system_prompt,
+            max_tokens=max_tokens,
+            system=system_prompt + "\n\n[지시] 지금까지 조회한 데이터를 바탕으로 대표님께 보고하세요.",
             messages=messages,
             tools=SUJIN_TOOLS,
             temperature=temperature,
         )
-
-        # tool_use가 없으면 최종 응답 — 토큰 넉넉하게 재요청
-        if response.stop_reason != "tool_use":
-            text = ""
-            for block in response.content:
-                if hasattr(block, "text"):
-                    text += block.text
-            if text.strip():
-                return text.strip(), "claude-sonnet"
-            # 텍스트가 비어있으면 아래 최종 호출로
-
-        # tool_use 처리
-        assistant_content = response.content
-        messages.append({"role": "assistant", "content": assistant_content})
-
-        tool_results = []
-        for block in assistant_content:
-            if block.type == "tool_use":
-                result = execute_tool(block.name, block.input)
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": result,
-                })
-
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
-
-    # 최종 응답: tool 없이 텍스트만 생성 — 토큰 충분히 할당
-    try:
-        final = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=messages,
-            temperature=temperature,
-        )
-        text = ""
-        for block in final.content:
-            if hasattr(block, "text"):
-                text += block.text
-        if text.strip():
-            return text.strip(), "claude-sonnet"
+        text = "".join(b.text for b in final.content if hasattr(b, "text")).strip()
+        if text:
+            return text, "claude-sonnet"
+        print(f"⚠️ chat_with_tools: 최종 재호출도 텍스트 없음 (stop={final.stop_reason})")
     except Exception as e:
-        print(f"⚠️ chat_with_tools 최종 응답 실패: {str(e)[:100]}")
+        print(f"⚠️ chat_with_tools 최종 재호출 실패: {str(e)[:200]}")
 
-    return "시스템 데이터를 조회했으나 응답 생성에 실패했습니다. 다시 질문해주세요.", "claude-sonnet"
+    return "죄송합니다 대표님, 시스템 데이터 조회 중 문제가 발생했습니다. 다시 한번 말씀해주시겠습니까?", "claude-sonnet"
+
 
