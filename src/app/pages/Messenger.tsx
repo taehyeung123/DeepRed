@@ -37,7 +37,7 @@ export function Messenger() {
   const employees = useEmployees();
   const [selectedChat, setSelectedChat] = useState<Employee>(baseEmployees[0]);
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [collapsedDepts, setCollapsedDepts] = useState<Set<string>>(new Set());
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [chatMode, setChatMode] = useState<'dm' | 'group'>('dm');
@@ -107,7 +107,7 @@ export function Messenger() {
   }, [currentMessages]);
 
   const handleSend = useCallback(async () => {
-    if (!message.trim() || isLoading) return;
+    if (!message.trim() || loadingChatId) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -120,7 +120,7 @@ export function Messenger() {
     setChatHistories(prev => ({ ...prev, [selectedChat.id]: updatedHistory }));
     setMessage('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    setIsLoading(true);
+    setLoadingChatId(selectedChat.id);
 
     try {
       const apiHistory = updatedHistory.map(msg => ({
@@ -195,9 +195,9 @@ export function Messenger() {
         [selectedChat.id]: [...(prev[selectedChat.id] || []), errMsg],
       }));
     } finally {
-      setIsLoading(false);
+      setLoadingChatId(null);
     }
-  }, [message, isLoading, selectedChat, currentMessages]);
+  }, [message, loadingChatId, selectedChat, currentMessages]);
 
   const handleGroupSend = useCallback(async () => {
     if (!message.trim() || groupLoading) return;
@@ -569,7 +569,7 @@ export function Messenger() {
                   </div>
                 </div>
               ))}
-              {isLoading && (
+              {loadingChatId === selectedChat.id && (
                 <div className="flex justify-start">
                   <div className="glass-card p-3 rounded-2xl flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-[var(--dr-accent)]" />
