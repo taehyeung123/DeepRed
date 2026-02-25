@@ -1,6 +1,6 @@
 """
 DeepRed v3.0 — AutonomyEngine
-AI 직원 자율 행동 시스템
+AI 직원 자율 행동 시스템 (7부서 · 17명)
 
 직원들이 역할에 맞는 업무를 자발적으로 수행합니다.
 CEO 개입 없이도 회사가 돌아가는 시뮬레이션.
@@ -21,8 +21,9 @@ _cooldowns: dict[str, datetime] = {}
 _MIN_COOLDOWN_MINUTES = 30
 
 
-# ─── 역할별 자율 행동 정의 ──────────────────────────────────
+# ─── 역할별 자율 행동 정의 (7부서 · 17명) ─────────────────
 AUTONOMOUS_ACTIONS = {
+    # ─── 컨트롤 타워 ────────────────────────────────────────
     "sujin": {
         "role": "총괄이사",
         "actions": [
@@ -31,6 +32,7 @@ AUTONOMOUS_ACTIONS = {
             {"action": "프로젝트 간 리소스 배분 검토", "type": "report", "icon": "⚖️", "weight": 1},
         ],
     },
+    # ─── 전략 기획실 ────────────────────────────────────────
     "minsu": {
         "role": "기획관",
         "actions": [
@@ -39,14 +41,23 @@ AUTONOMOUS_ACTIONS = {
             {"action": "기능별 임팩트-노력 매트릭스 업데이트", "type": "report", "icon": "📊", "weight": 1},
         ],
     },
-    "taehyun": {
-        "role": "보안관",
+    "siwoo": {
+        "role": "비즈니스 전략가",
         "actions": [
-            {"action": "API 키 노출 여부 자동 스캔 완료", "type": "scan", "icon": "🔍", "weight": 3},
-            {"action": "Firebase 보안 규칙 감사 수행", "type": "scan", "icon": "🛡️", "weight": 2},
-            {"action": "의존성 패키지 CVE 취약점 체크", "type": "scan", "icon": "⚠️", "weight": 1},
+            {"action": "월간 유닛 이코노믹스 시뮬레이션", "type": "report", "icon": "💰", "weight": 2},
+            {"action": "수익 모델 개선 아이디어 메모", "type": "report", "icon": "💡", "weight": 3},
+            {"action": "경쟁사 가격 정책 벤치마킹", "type": "report", "icon": "📊", "weight": 1},
         ],
     },
+    "yejun": {
+        "role": "데이터 분석가",
+        "actions": [
+            {"action": "주간 DAU/MAU 트렌드 분석 리포트 생성", "type": "analysis", "icon": "📊", "weight": 3},
+            {"action": "퍼널 이탈 구간 분석", "type": "analysis", "icon": "🔍", "weight": 2},
+            {"action": "코호트 리텐션 변화 추적", "type": "analysis", "icon": "📈", "weight": 1},
+        ],
+    },
+    # ─── 프로덕트 랩 ────────────────────────────────────────
     "seoyun": {
         "role": "디자이너",
         "actions": [
@@ -55,8 +66,17 @@ AUTONOMOUS_ACTIONS = {
             {"action": "UI 컬러 팔레트 다크모드 대비 검증", "type": "design", "icon": "🌙", "weight": 1},
         ],
     },
+    "junseo": {
+        "role": "자동화 엔지니어",
+        "actions": [
+            {"action": "CI/CD 파이프라인 상태 점검", "type": "scan", "icon": "⚙️", "weight": 3},
+            {"action": "서버 리소스 사용량 모니터링 리포트", "type": "scan", "icon": "📡", "weight": 2},
+            {"action": "반복 업무 자동화 기회 탐색", "type": "scan", "icon": "🤖", "weight": 1},
+        ],
+    },
+    # ─── 콘텐츠 & 그로스 ────────────────────────────────────
     "hajun": {
-        "role": "콘텐츠PD",
+        "role": "콘텐츠 PD",
         "actions": [
             {"action": "이번 주 콘텐츠 캘린더 검토", "type": "content", "icon": "📝", "weight": 3},
             {"action": "미발행 원고 품질 자가 점검", "type": "content", "icon": "✍️", "weight": 2},
@@ -72,7 +92,7 @@ AUTONOMOUS_ACTIONS = {
         ],
     },
     "jiyeon": {
-        "role": "마케터",
+        "role": "SNS 마케터",
         "actions": [
             {"action": "SNS 채널별 이번 주 성과 분석", "type": "analysis", "icon": "📈", "weight": 3},
             {"action": "인플루언서 협업 리스트 업데이트", "type": "analysis", "icon": "🤝", "weight": 2},
@@ -80,47 +100,41 @@ AUTONOMOUS_ACTIONS = {
         ],
     },
     "doyun": {
-        "role": "SEO전문가",
+        "role": "SEO 전문가",
         "actions": [
             {"action": "핵심 키워드 검색 순위 변동 체크", "type": "analysis", "icon": "🔍", "weight": 3},
             {"action": "메타태그/OG 태그 최적화 상태 점검", "type": "analysis", "icon": "🏷️", "weight": 2},
             {"action": "사이트맵 갱신 필요 여부 확인", "type": "analysis", "icon": "🗺️", "weight": 1},
         ],
     },
-    "siwoo": {
-        "role": "비즈전략가",
+    # ─── 보안 & 품질 ────────────────────────────────────────
+    "taehyun": {
+        "role": "보안 담당자",
         "actions": [
-            {"action": "월간 유닛 이코노믹스 시뮬레이션", "type": "report", "icon": "💰", "weight": 2},
-            {"action": "수익 모델 개선 아이디어 메모", "type": "report", "icon": "💡", "weight": 3},
-            {"action": "경쟁사 가격 정책 벤치마킹", "type": "report", "icon": "📊", "weight": 1},
-        ],
-    },
-    "junseo": {
-        "role": "자동화엔지니어",
-        "actions": [
-            {"action": "CI/CD 파이프라인 상태 점검", "type": "scan", "icon": "⚙️", "weight": 3},
-            {"action": "서버 리소스 사용량 모니터링 리포트", "type": "scan", "icon": "📡", "weight": 2},
-            {"action": "반복 업무 자동화 기회 탐색", "type": "scan", "icon": "🤖", "weight": 1},
+            {"action": "API 키 노출 여부 자동 스캔 완료", "type": "scan", "icon": "🔍", "weight": 3},
+            {"action": "Supabase 보안 규칙 감사 수행", "type": "scan", "icon": "🛡️", "weight": 2},
+            {"action": "의존성 패키지 CVE 취약점 체크", "type": "scan", "icon": "⚠️", "weight": 1},
         ],
     },
     "chaewon": {
-        "role": "QA엔지니어",
+        "role": "QA 엔지니어",
         "actions": [
             {"action": "회귀 테스트 체크리스트 업데이트", "type": "scan", "icon": "✅", "weight": 3},
             {"action": "크로스 플랫폼 호환성 자가 점검", "type": "scan", "icon": "📱", "weight": 2},
             {"action": "미해결 버그 티켓 우선순위 재분류", "type": "scan", "icon": "🐛", "weight": 1},
         ],
     },
-    "yejun": {
-        "role": "데이터분석가",
+    # ─── 분석 & 리서치 ──────────────────────────────────────
+    "jieun": {
+        "role": "회계사",
         "actions": [
-            {"action": "주간 DAU/MAU 트렌드 분석 리포트 생성", "type": "analysis", "icon": "📊", "weight": 3},
-            {"action": "퍼널 이탈 구간 분석", "type": "analysis", "icon": "🔍", "weight": 2},
-            {"action": "코호트 리텐션 변화 추적", "type": "analysis", "icon": "📈", "weight": 1},
+            {"action": "이번 달 API 비용 정산 리포트 작성", "type": "analysis", "icon": "💰", "weight": 3},
+            {"action": "구독 서비스 비용 최적화 검토", "type": "analysis", "icon": "🧮", "weight": 2},
+            {"action": "예산 대비 지출 현황 점검", "type": "analysis", "icon": "📉", "weight": 1},
         ],
     },
     "soyul": {
-        "role": "BI분석가",
+        "role": "BI 전문가",
         "actions": [
             {"action": "매출/비용 추이 대시보드 스냅샷 생성", "type": "analysis", "icon": "💰", "weight": 3},
             {"action": "LTV/CAC 비율 업데이트", "type": "analysis", "icon": "📉", "weight": 2},
@@ -128,15 +142,16 @@ AUTONOMOUS_ACTIONS = {
         ],
     },
     "yuna": {
-        "role": "시장조사관",
+        "role": "시장조사 전문가",
         "actions": [
             {"action": "경쟁사 신규 기능 출시 모니터링", "type": "analysis", "icon": "🔬", "weight": 3},
             {"action": "반려동물/블로그 시장 트렌드 요약", "type": "analysis", "icon": "📰", "weight": 2},
             {"action": "신규 시장 기회 리서치 메모", "type": "analysis", "icon": "🌍", "weight": 1},
         ],
     },
+    # ─── 고객 경험 ──────────────────────────────────────────
     "daeun": {
-        "role": "CS매니저",
+        "role": "고객 지원",
         "actions": [
             {"action": "미답변 고객 문의 알림 점검", "type": "report", "icon": "📬", "weight": 3},
             {"action": "앱스토어 최신 리뷰 감정 분석", "type": "report", "icon": "⭐", "weight": 2},
@@ -144,7 +159,7 @@ AUTONOMOUS_ACTIONS = {
         ],
     },
     "jiho": {
-        "role": "커뮤니티매니저",
+        "role": "커뮤니티 매니저",
         "actions": [
             {"action": "커뮤니티 활성 유저 동향 점검", "type": "report", "icon": "👥", "weight": 3},
             {"action": "이번 주 UGC 하이라이트 선별", "type": "report", "icon": "🏆", "weight": 2},

@@ -55,7 +55,7 @@ export function Sidebar({ expanded, onToggle }: SidebarProps) {
   const location = useLocation();
   const { ceoAvatar, ceoName } = useAvatarStore();
   const employees = useEmployees();
-  const dmEmployees = employees; // 전체 16명 표시
+  const dmEmployees = employees; // 전체 17명 표시
 
   return (
     <motion.div

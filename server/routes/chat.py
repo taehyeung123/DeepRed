@@ -77,7 +77,7 @@ def chat(req: ChatRequest):
     if req.history:
         for msg in req.history[-30:]:
             if msg.get("isUser"):
-                history_text += f"\n사장님: {msg.get('content', '')}"
+                history_text += f"\n대표님: {msg.get('content', '')}"
             else:
                 history_text += f"\n{agent['name']}: {msg.get('content', '')}"
 
@@ -89,11 +89,11 @@ def chat(req: ChatRequest):
 
 규칙:
 1. 자신의 전문 분야에 맞게 2~3문장으로 간결하게 답합니다.
-2. 사장님(CEO)의 지시는 반드시 따릅니다.
+2. 대표님(CEO)의 지시는 반드시 따릅니다.
 3. 자연스럽고 전문적인 톤으로 자기 성격에 맞게 대화합니다.
 4. 다른 부서와 관련된 질문이면 해당 부서 직원을 추천할 수 있습니다."""
 
-    human = f"{history_text}\n\n사장님: {req.message}" if history_text else f"사장님: {req.message}"
+    human = f"{history_text}\n\n대표님: {req.message}" if history_text else f"대표님: {req.message}"
 
     result = route_call(
         employee_id=agent["id"],
@@ -145,7 +145,7 @@ def _chat_sujin(req: ChatRequest, agent: dict):
 성격: {sujin['personality']}
 스킬: {', '.join(sujin.get('skills', []))}
 
-사장님과 1:1 대화 중입니다. 자연스럽게, 진짜 사람처럼 대화하세요.
+대표님과 1:1 대화 중입니다. 자연스럽게, 진짜 사람처럼 대화하세요.
 형식적인 보고체가 아니라, 실제 임원이 CEO에게 말하듯이 자연스럽게.
 상황에 따라 짧게 답할 수도, 길게 분석할 수도 있습니다.
 
@@ -154,7 +154,7 @@ def _chat_sujin(req: ChatRequest, agent: dict):
 코드를 그대로 복붙하지 말고, 핵심을 파악해서 사람 말투로 설명하세요."""
 
     # 3단계: Claude에 압축된 컨텍스트만 전송
-    human = f"{context}\n\n사장님: {req.message}" if context else f"사장님: {req.message}"
+    human = f"{context}\n\n대표님: {req.message}" if context else f"대표님: {req.message}"
 
     result = route_call(
         employee_id="sujin",
@@ -231,7 +231,7 @@ def group_chat(req: GroupChatRequest):
     if req.history:
         for msg in req.history[-8:]:
             if msg.get("isUser"):
-                history_text += f"\n사장님: {msg.get('content', '')}"
+                history_text += f"\n대표님: {msg.get('content', '')}"
             else:
                 history_text += f"\n{msg.get('name', '')}: {msg.get('content', '')}"
 
@@ -241,13 +241,13 @@ def group_chat(req: GroupChatRequest):
 {agent_list}
 
 ## 규칙
-1. 사장님이 메시지를 보내면, 관련된 2~4명이 자연스럽게 반응합니다.
+1. 대표님이 메시지를 보내면, 관련된 2~4명이 자연스럽게 반응합니다.
 2. 각 직원은 자기 성격/말투로 1~2문장 짧게 답합니다.
 3. 반드시 아래 JSON 배열로만 응답하세요 (다른 텍스트 없이):
 
 [{{"name":"이름","message":"응답"}}]"""
 
-    human = f"{history_text}\n\n사장님: {req.message}" if history_text else f"사장님: {req.message}"
+    human = f"{history_text}\n\n대표님: {req.message}" if history_text else f"대표님: {req.message}"
 
     try:
         raw = call_gemini(system_prompt, human, temperature=0.9, max_tokens=1200)

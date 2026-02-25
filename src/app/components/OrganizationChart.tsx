@@ -17,11 +17,11 @@ import { useNavigate } from 'react-router';
 
 // ─── 부서 컬러 맵 ─────────────────────────
 const DEPT_COLORS: Record<string, string> = {
-  control: '#DC143C', planning: '#3b82f6', security: '#f59e0b',
-  design: '#ec4899', content: '#8b5cf6', marketing: '#22c55e',
-  business: '#f97316', automation: '#06b6d4', data: '#6366f1',
-  research: '#14b8a6', customer: '#a855f7',
+  control: '#DC143C', strategy: '#3b82f6', product: '#ec4899',
+  growth: '#22c55e', security_qa: '#f59e0b', analytics: '#6366f1',
+  customer: '#a855f7',
 };
+
 
 // ─── 직원 상세 프로필 모달 ─────────────────
 function EmployeeProfileModal({ employee, onClose, onDM }: { employee: Employee; onClose: () => void; onDM?: (id: string) => void }) {
