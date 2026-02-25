@@ -155,7 +155,7 @@ export function Messenger() {
         text: data.message,
         name: data.name || selectedChat.name,
         time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        model: data.model || (isSujinChat ? 'claude' : 'gemini'),
+        model: data.model?.includes('claude') ? 'claude' : data.model?.includes('kimi') ? 'kimi' : data.model ? 'gemini' : (isSujinChat ? 'claude' : 'gemini'),
       };
 
       setChatHistories(prev => {
@@ -553,9 +553,9 @@ export function Messenger() {
                           {msg.name}
                         </span>
                         {msg.model && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${msg.model === 'claude' ? 'bg-[#7c3aed]/15 text-[#a78bfa]' : 'bg-[#3b82f6]/15 text-[#7dd3fc]'
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${msg.model?.includes('claude') ? 'bg-[#7c3aed]/15 text-[#a78bfa]' : 'bg-[#3b82f6]/15 text-[#7dd3fc]'
                             }`}>
-                            {msg.model === 'claude' ? 'Claude' : 'Gemini'}
+                            {msg.model?.includes('claude') ? 'Claude' : 'Gemini'}
                           </span>
                         )}
                       </div>
