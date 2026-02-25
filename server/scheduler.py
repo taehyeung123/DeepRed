@@ -180,6 +180,14 @@ SCHEDULED_JOBS = [
         "minutes": 30,
         "description": "30분마다 — 2~5명 직원이 자율적으로 업무 수행",
     },
+    {
+        "id": "sujin_proactive",
+        "name": "수진 자율 메시지",
+        "function": None,  # 아래 start_scheduler에서 동적 바인딩
+        "trigger": "interval",
+        "minutes": 10,
+        "description": "10분마다 — 수진이 시스템 상태 체크 및 대표님께 자율 보고",
+    },
 ]
 
 
@@ -204,6 +212,20 @@ def start_scheduler():
                 break
     except Exception as e:
         print(f"⚠️ 자율 행동 엔진 바인딩 실패: {e}")
+
+    # 수진 자율 메시지 함수 동적 바인딩
+    try:
+        from proactive import run_sujin_proactive_check
+        def _proactive_wrapper():
+            result = run_sujin_proactive_check()
+            generated = result.get("generated", [])
+            _record_job("sujin_proactive", "success", f"{len(generated)}건 생성" if generated else "체크 완료")
+        for job in SCHEDULED_JOBS:
+            if job["id"] == "sujin_proactive":
+                job["function"] = _proactive_wrapper
+                break
+    except Exception as e:
+        print(f"⚠️ 수진 자율 메시지 바인딩 실패: {e}")
 
     for job in SCHEDULED_JOBS:
         if job["function"] is None:

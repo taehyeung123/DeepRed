@@ -101,6 +101,46 @@ export function Messenger() {
       .catch(() => setServerStatus('offline'));
   }, []);
 
+  // Poll for proactive messages from Sujin (every 30s)
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/proactive/messages?employee_id=sujin`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          const newMsgs: Message[] = data.messages.map((m: any) => ({
+            id: m.id,
+            sender: 'ai' as const,
+            text: m.text,
+            name: m.employee_name,
+            time: new Date(m.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+            model: 'claude',
+          }));
+          // Inject into sujin's chat
+          setChatHistories(prev => {
+            const sujinId = baseEmployees.find(e => e.name === '수진')?.id || 'sujin';
+            const existing = prev[sujinId] || [];
+            const existingIds = new Set(existing.map(m => m.id));
+            const fresh = newMsgs.filter(m => !existingIds.has(m.id));
+            if (fresh.length === 0) return prev;
+            return { ...prev, [sujinId]: [...existing, ...fresh] };
+          });
+          // Mark as read
+          const ids = data.messages.map((m: any) => m.id);
+          fetch(`${API_BASE}/api/proactive/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_ids: ids }),
+          }).catch(() => { });
+        }
+      } catch { /* server offline */ }
+    };
+    poll(); // initial check
+    const interval = setInterval(poll, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -602,7 +642,7 @@ export function Messenger() {
                 // Shift+Enter or Alt+Enter → default behavior (newline)
               }}
               placeholder={chatMode === 'group' ? '전체 채팅방에 메시지 보내기...' : `${selectedChat.name}에게 메시지 보내기...`}
-              disabled={chatMode === 'group' ? groupLoading : isLoading}
+              disabled={chatMode === 'group' ? groupLoading : !!loadingChatId}
               rows={1}
               className="flex-1 min-h-[40px] max-h-[120px] px-4 py-2.5 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
                        rounded-lg text-[13px] text-[var(--dr-text)] resize-none
@@ -612,13 +652,13 @@ export function Messenger() {
             />
             <button
               onClick={chatMode === 'group' ? handleGroupSend : handleSend}
-              disabled={(chatMode === 'group' ? groupLoading : isLoading) || !message.trim()}
+              disabled={(chatMode === 'group' ? groupLoading : !!loadingChatId) || !message.trim()}
               className="px-4 py-2 rounded-lg bg-gradient-to-br from-[var(--dr-accent)] to-[#b91c3c] text-white
                        hover:shadow-[var(--shadow-glow-accent)] transition-all duration-300
                        flex items-center gap-2
                        disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {(chatMode === 'group' ? groupLoading : isLoading) ? (
+              {(chatMode === 'group' ? groupLoading : !!loadingChatId) ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />
