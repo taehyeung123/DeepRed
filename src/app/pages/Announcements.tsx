@@ -2,7 +2,7 @@
 import { Plus, Pin, Heart, MessageCircle, Megaphone, Trophy, RefreshCw, FileText, Loader2, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { API_BASE } from '../lib/api';
 
 interface Announcement {
   id: string;

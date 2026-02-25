@@ -85,6 +85,66 @@
   --font-weight-normal: 400;
 }
 
+/* ─── Light Theme ─── */
+html.light {
+  --dr-bg: #f5f5fa;
+  --dr-bg-elevated: #eeeef6;
+  --dr-bg-card: #ffffff;
+  --dr-bg-hover: #e8e8f0;
+  --dr-accent: #DC143C;
+  --dr-accent-soft: rgba(220, 20, 60, 0.12);
+  --dr-success: #16a34a;
+  --dr-warning: #d97706;
+  --dr-error: #dc2626;
+  --dr-info: #2563eb;
+  --dr-text: #1a1a2e;
+  --dr-text-secondary: #44445a;
+  --dr-text-muted: #7a7a90;
+  --dr-text-dim: #9a9ab0;
+  --dr-glass-bg: rgba(255, 255, 255, 0.85);
+  --dr-glass-border: rgba(0, 0, 0, 0.10);
+  --dr-border: rgba(0, 0, 0, 0.10);
+  --dr-border-light: rgba(0, 0, 0, 0.06);
+  --dr-accent-gradient: linear-gradient(135deg, #DC143C, #b91c3c);
+
+  --background: var(--dr-bg);
+  --foreground: var(--dr-text);
+  --card: var(--dr-bg-card);
+  --card-foreground: var(--dr-text);
+  --popover: var(--dr-bg-elevated);
+  --popover-foreground: var(--dr-text);
+  --secondary: var(--dr-bg-elevated);
+  --secondary-foreground: var(--dr-text);
+  --muted: var(--dr-bg-hover);
+  --muted-foreground: var(--dr-text-muted);
+  --border: var(--dr-glass-border);
+  --input: var(--dr-bg-card);
+
+  --shadow-glow-accent: 0 0 24px rgba(220, 20, 60, 0.12);
+  --shadow-glow-success: 0 0 16px rgba(22, 163, 74, 0.15);
+  --shadow-glow-warning: 0 0 16px rgba(217, 119, 6, 0.15);
+}
+
+html.light .glass-card {
+  background: rgba(255, 255, 255, 0.90);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+html.light .glass-card-strong {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.10);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.20);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

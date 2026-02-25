@@ -6,3 +6,5 @@ anthropic
 apscheduler
 python-telegram-bot
 redis
+pytest
+httpx

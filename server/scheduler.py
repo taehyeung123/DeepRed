@@ -172,17 +172,43 @@ SCHEDULED_JOBS = [
         "hour": 18, "minute": 0,
         "description": "매일 18:00 — 예준(데이터분석가)이 KPI 스냅샷 생성",
     },
+    {
+        "id": "autonomy_tick",
+        "name": "자율 행동 틱",
+        "function": None,  # 아래 start_scheduler에서 동적 바인딩
+        "trigger": "interval",
+        "minutes": 30,
+        "description": "30분마다 — 2~5명 직원이 자율적으로 업무 수행",
+    },
 ]
 
 
 def start_scheduler():
-    """스케줄러 시작 (모든 크론잡 등록)"""
+    """스케줄러 시작 (모든 크론잡 + 자율 행동 등록)"""
     scheduler = _get_scheduler()
     if not scheduler:
         print("⚠️ 스케줄러를 시작할 수 없습니다.")
         return False
 
+    # 자율 행동 함수 동적 바인딩
+    try:
+        from autonomy import run_autonomous_tick
+        from deps import EMPLOYEES, tracker, add_activity_log, memory
+        def _autonomy_wrapper():
+            result = run_autonomous_tick(EMPLOYEES, tracker, add_activity_log, memory)
+            count = result.get("triggered", 0)
+            _record_job("autonomy_tick", "success", f"{count}명 자율 행동")
+        for job in SCHEDULED_JOBS:
+            if job["id"] == "autonomy_tick":
+                job["function"] = _autonomy_wrapper
+                break
+    except Exception as e:
+        print(f"⚠️ 자율 행동 엔진 바인딩 실패: {e}")
+
     for job in SCHEDULED_JOBS:
+        if job["function"] is None:
+            print(f"  ⚠️ {job['name']} → 함수 미설정, 스킵")
+            continue
         try:
             if job["trigger"] == "cron":
                 scheduler.add_job(
@@ -194,12 +220,17 @@ def start_scheduler():
                     replace_existing=True,
                 )
             elif job["trigger"] == "interval":
+                kwargs = {"id": job["id"], "replace_existing": True}
+                if "minutes" in job:
+                    kwargs["minutes"] = job["minutes"]
+                elif "hours" in job:
+                    kwargs["hours"] = job["hours"]
+                else:
+                    kwargs["hours"] = 1
                 scheduler.add_job(
                     job["function"],
                     "interval",
-                    id=job["id"],
-                    hours=job.get("hours", 1),
-                    replace_existing=True,
+                    **kwargs,
                 )
             print(f"  📅 {job['name']} → 등록 완료")
         except Exception as e:
@@ -209,6 +240,7 @@ def start_scheduler():
     print("✅ 스케줄러 시작 완료")
     _record_job("scheduler_start", "success", f"{len(SCHEDULED_JOBS)}개 작업 등록")
     return True
+
 
 
 def stop_scheduler():

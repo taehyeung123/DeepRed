@@ -1,10 +1,9 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AvatarRenderer } from '../components/avatar/AvatarRenderer';
 import { useEmployees } from '../hooks/useEmployees';
-import { Loader2, RefreshCw, ChevronDown, Users, Zap, CheckCircle } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { Loader2, RefreshCw, ChevronDown, Users, Zap, CheckCircle, BarChart3, TrendingUp } from 'lucide-react';
+import { API_BASE } from '../lib/api';
 
 interface AttendanceEntry {
   employee_id: string;
@@ -244,8 +243,74 @@ export function Attendance() {
       ) : (
         /* ─── 주간 캘린더 탭 ─────────────────── */
         <div className="space-y-4">
-          {/* Weekly overview cards */}
-          <div className="grid grid-cols-7 gap-3">
+          {/* Department summary chart */}
+          {(() => {
+            const deptMap = new Map<string, { name: string; contribution: number; tasks: number; count: number }>();
+            activityHistory.forEach(day => day.employees.forEach(e => {
+              const prev = deptMap.get(e.department_key) || { name: e.department_key, contribution: 0, tasks: 0, count: 0 };
+              deptMap.set(e.department_key, { name: prev.name, contribution: prev.contribution + e.contribution, tasks: prev.tasks + e.tasks, count: prev.count + 1 });
+            }));
+            const depts = [...deptMap.entries()].sort((a, b) => b[1].contribution - a[1].contribution);
+            const maxContrib = Math.max(...depts.map(d => d[1].contribution), 1);
+            const totalContrib = activityHistory.reduce((s, d) => s + d.summary.total_contribution, 0);
+            const totalTasks = activityHistory.reduce((s, d) => s + d.summary.total_tasks, 0);
+            const avgActive = Math.round(activityHistory.reduce((s, d) => s + d.summary.active_employees, 0) / Math.max(activityHistory.length, 1));
+
+            return (
+              <>
+                {/* Stats summary cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="glass-card p-4 text-center">
+                    <TrendingUp className="w-5 h-5 mx-auto mb-1 text-[var(--dr-accent)]" />
+                    <p className="text-[20px] font-bold text-[var(--dr-text)]">{totalContrib}<span className="text-[12px] font-normal text-[var(--dr-text-muted)]">pt</span></p>
+                    <p className="text-[11px] text-[var(--dr-text-muted)]">주간 총 기여도</p>
+                  </div>
+                  <div className="glass-card p-4 text-center">
+                    <CheckCircle className="w-5 h-5 mx-auto mb-1 text-[var(--dr-success)]" />
+                    <p className="text-[20px] font-bold text-[var(--dr-text)]">{totalTasks}<span className="text-[12px] font-normal text-[var(--dr-text-muted)]">건</span></p>
+                    <p className="text-[11px] text-[var(--dr-text-muted)]">주간 총 태스크</p>
+                  </div>
+                  <div className="glass-card p-4 text-center">
+                    <Users className="w-5 h-5 mx-auto mb-1 text-[var(--dr-info)]" />
+                    <p className="text-[20px] font-bold text-[var(--dr-text)]">{avgActive}<span className="text-[12px] font-normal text-[var(--dr-text-muted)]">명</span></p>
+                    <p className="text-[11px] text-[var(--dr-text-muted)]">평균 참여 인원</p>
+                  </div>
+                </div>
+
+                {/* Dept bar chart */}
+                {depts.length > 0 && (
+                  <div className="glass-card p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <BarChart3 className="w-4 h-4 text-[var(--dr-accent)]" />
+                      <h3 className="text-[14px] font-semibold text-[var(--dr-text)]">부서별 주간 기여도</h3>
+                    </div>
+                    <div className="space-y-2.5">
+                      {depts.map(([key, dept]) => {
+                        const color = DEPT_COLORS[key] || '#888';
+                        const pct = Math.round((dept.contribution / maxContrib) * 100);
+                        return (
+                          <div key={key} className="flex items-center gap-3">
+                            <span className="text-[11px] w-16 text-right text-[var(--dr-text-muted)] truncate">{key}</span>
+                            <div className="flex-1 h-4 bg-[var(--dr-bg-hover)] rounded-full overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.8 }}
+                                className="h-full rounded-full"
+                                style={{ backgroundColor: color }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-mono w-12 text-right" style={{ color }}>{dept.contribution}pt</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+          <div className="grid grid-cols-3 md:grid-cols-7 gap-3">
             {activityHistory.map((day, idx) => {
               const isExpanded = expandedDay === day.date;
               const avgContrib = day.summary.total_contribution / Math.max(day.summary.total_employees, 1);
@@ -354,7 +419,7 @@ export function Attendance() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {sortedEmployees.map((empActivity) => {
                         const emp = getEmployeeById(empActivity.employee_id);
                         const deptColor = DEPT_COLORS[empActivity.department_key] || '#888';

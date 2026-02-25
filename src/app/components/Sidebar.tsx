@@ -184,6 +184,7 @@ export function Sidebar({ expanded, onToggle }: SidebarProps) {
             {expanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             {expanded && <span className="text-[12px]">접기</span>}
           </button>
+
         </div>
       </div>
     </motion.div>

@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { Search, FileText, Loader2, RefreshCw, Calendar, User, Tag } from 'lucide-react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, FileText, Loader2, RefreshCw, Calendar, User, Tag, Copy, Check, ArrowUpDown } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { API_BASE } from '../lib/api';
@@ -40,6 +40,8 @@ export function Deliverables() {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [typeFilter, setTypeFilter] = useState('');
   const [searching, setSearching] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [copied, setCopied] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -70,7 +72,21 @@ export function Deliverables() {
     setSearchResults(null);
   };
 
-  const displayDocs = searchResults !== null ? searchResults : documents;
+  const baseDocs = searchResults !== null ? searchResults : documents;
+  const displayDocs = useMemo(() => {
+    const sorted = [...baseDocs];
+    if (sortBy === 'name') sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return sorted;
+  }, [baseDocs, sortBy]);
+
+  const handleCopy = async () => {
+    if (!selectedDoc) return;
+    const text = selectedDoc.title + '\n\n' + selectedDoc.content;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const getRelativeTime = (ts: string) => {
     const diff = Date.now() - new Date(ts).getTime();
@@ -120,8 +136,8 @@ export function Deliverables() {
       </div>
 
       {/* Search + Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-wrap items-center gap-3 md:gap-4">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--dr-text-muted)]" />
           <input
             type="text"
@@ -140,7 +156,7 @@ export function Deliverables() {
             검색 초기화
           </button>
         )}
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {DOC_FILTERS.map(f => (
             <button
               key={f.key}
@@ -154,9 +170,17 @@ export function Deliverables() {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => setSortBy(s => s === 'date' ? 'name' : 'date')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium
+                   text-[var(--dr-text-muted)] border border-[var(--dr-glass-border)] hover:text-[var(--dr-text)] transition-colors"
+        >
+          <ArrowUpDown className="w-3 h-3" />
+          {sortBy === 'date' ? '날짜순' : '이름순'}
+        </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Document List */}
         <div className="col-span-1 space-y-2 max-h-[70vh] overflow-y-auto pr-1">
           <p className="text-[12px] text-[var(--dr-text-muted)] mb-2">
@@ -203,7 +227,7 @@ export function Deliverables() {
         </div>
 
         {/* Document Detail */}
-        <div className="col-span-2">
+        <div className="col-span-1 md:col-span-2">
           {selectedDoc ? (() => {
             const typeInfo = DOC_TYPE_LABELS[selectedDoc.doc_type] || { label: selectedDoc.doc_type, color: '#6b7280', icon: '📄' };
             const parsed = tryParseContent(selectedDoc.content);
@@ -212,7 +236,7 @@ export function Deliverables() {
                 <div className="glass-card p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-[20px]">{typeInfo.icon}</span>
-                    <div>
+                    <div className="flex-1">
                       <h2 className="text-[16px] font-semibold text-[var(--dr-text)]">{selectedDoc.title}</h2>
                       <div className="flex items-center gap-3 mt-1 text-[11px] text-[var(--dr-text-muted)]">
                         {selectedDoc.author_name && (
@@ -223,6 +247,14 @@ export function Deliverables() {
                         {selectedDoc.project && <span className="px-1.5 py-0.5 rounded bg-[var(--dr-accent)]/10 text-[var(--dr-accent)]">{selectedDoc.project}</span>}
                       </div>
                     </div>
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px]
+                               border border-[var(--dr-glass-border)] text-[var(--dr-text-muted)]
+                               hover:text-[var(--dr-text)] hover:bg-[var(--dr-bg-hover)] transition-all"
+                    >
+                      {copied ? <><Check className="w-3 h-3 text-[var(--dr-success)]" /> 복사됨</> : <><Copy className="w-3 h-3" /> 복사</>}
+                    </button>
                   </div>
                 </div>
 

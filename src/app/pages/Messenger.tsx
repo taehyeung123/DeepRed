@@ -52,6 +52,7 @@ export function Messenger() {
     } catch { return {}; }
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const currentMessages = chatHistories[selectedChat.id] || [];
 
@@ -118,6 +119,7 @@ export function Messenger() {
     const updatedHistory = [...currentMessages, userMsg];
     setChatHistories(prev => ({ ...prev, [selectedChat.id]: updatedHistory }));
     setMessage('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setIsLoading(true);
 
     try {
@@ -208,6 +210,7 @@ export function Messenger() {
     setGroupMessages(prev => [...prev, userMsg]);
     const outMsg = message;
     setMessage('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setGroupLoading(true);
 
     try {
@@ -581,16 +584,28 @@ export function Messenger() {
 
         {/* Input */}
         <div className="p-4 border-t border-[var(--dr-glass-border)]">
-          <div className="flex gap-3">
-            <input
-              type="text"
+          <div className="flex gap-3 items-end">
+            <textarea
+              ref={textareaRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (chatMode === 'group' ? handleGroupSend() : handleSend())}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                // Auto-resize: reset height then set to scrollHeight
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
+                  e.preventDefault();
+                  chatMode === 'group' ? handleGroupSend() : handleSend();
+                }
+                // Shift+Enter or Alt+Enter → default behavior (newline)
+              }}
               placeholder={chatMode === 'group' ? '전체 채팅방에 메시지 보내기...' : `${selectedChat.name}에게 메시지 보내기...`}
               disabled={chatMode === 'group' ? groupLoading : isLoading}
-              className="flex-1 h-10 px-4 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
-                       rounded-lg text-[13px] text-[var(--dr-text)]
+              rows={1}
+              className="flex-1 min-h-[40px] max-h-[120px] px-4 py-2.5 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
+                       rounded-lg text-[13px] text-[var(--dr-text)] resize-none
                        placeholder:text-[var(--dr-text-muted)]
                        focus:outline-none focus:ring-2 focus:ring-[var(--dr-accent)]/30
                        disabled:opacity-50"

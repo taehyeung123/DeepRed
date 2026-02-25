@@ -18,6 +18,7 @@ export const router = createBrowserRouter([
         children: [
             { index: true, Component: Dashboard },
             { path: 'messenger', Component: Messenger },
+            { path: 'messenger/:employeeId', Component: Messenger },
             { path: 'organization', Component: Organization },
             { path: 'tasks', Component: Tasks },
             { path: 'deliverables', Component: Deliverables },

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Activity, X, Check, CheckCheck, User, FileText, Megaphone } from 'lucide-react';
+import { Search, Bell, Activity, X, Check, CheckCheck, User, FileText, Megaphone, Moon, Sun } from 'lucide-react';
 import { employees } from '../../data/employees';
 import { API_BASE } from '../lib/api';
 import { useNavigate } from 'react-router';
@@ -36,6 +36,19 @@ export function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
+  const [isDark, setIsDark] = useState(() => !document.documentElement.classList.contains('light'));
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    if (next) {
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('dr-theme', 'dark');
+    } else {
+      document.documentElement.classList.add('light');
+      localStorage.setItem('dr-theme', 'light');
+    }
+  };
 
   const activeCount = employees.filter(
     (emp) => emp.status === 'working' || emp.status === 'meeting'
@@ -143,8 +156,8 @@ export function Header() {
 
   return (
     <header className="h-16 border-b border-[var(--dr-glass-border)] bg-[var(--dr-bg-elevated)] flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        <div className="relative" ref={searchRef}>
+      <div className="flex items-center gap-4 ml-8 md:ml-0">
+        <div className="relative hidden md:block" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--dr-text-muted)]" />
           <input
             type="text"
@@ -152,7 +165,7 @@ export function Header() {
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowSearch(true)}
-            className="w-72 h-9 pl-10 pr-4 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
+            className="w-60 lg:w-72 h-9 pl-10 pr-4 bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]
                      rounded-lg text-[13px] text-[var(--dr-text)]
                      placeholder:text-[var(--dr-text-muted)]
                      focus:outline-none focus:ring-2 focus:ring-[var(--dr-accent)]/30 focus:border-[var(--dr-accent)]
@@ -186,7 +199,16 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-[var(--dr-bg-hover)] transition-colors"
+          title={isDark ? '라이트 모드' : '다크 모드'}
+        >
+          {isDark ? <Sun className="w-4.5 h-4.5 text-[var(--dr-warning)]" /> : <Moon className="w-4.5 h-4.5 text-[var(--dr-text-secondary)]" />}
+        </button>
+
         {/* Server Status */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--dr-bg-card)] border border-[var(--dr-glass-border)]">
           <Activity className={`w-4 h-4 ${serverOnline ? 'text-[var(--dr-success)]' : 'text-[var(--dr-error)]'}`} />
