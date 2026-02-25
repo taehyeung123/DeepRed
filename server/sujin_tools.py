@@ -247,7 +247,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
 # ─── Claude Tool Use 대화 (multi-turn) ──────────────────
 def chat_with_tools(client, system_prompt: str, user_message: str,
-                    temperature: float = 0.8, max_tokens: int = 2500) -> tuple[str, str]:
+                    temperature: float = 0.8, max_tokens: int = 8192) -> tuple[str, str]:
     """
     Claude tool_use를 사용한 대화. 수진이 필요한 데이터를 자율적으로 조회.
     tool 호출 시 max_tokens=400 (짧은 tool_use 블록), 최종 응답 시 max_tokens=1500 (데이터 포함 답변)
