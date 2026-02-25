@@ -1,6 +1,6 @@
 """
 DeepRed v3.0 — Phase 4: GitHub Code Reader
-수진(COO)이 GitHub 리포 코드를 읽을 수 있게 하는 모듈.
+직원별 권한 기반 GitHub 리포 코드 접근 모듈.
 Claude 직접 방식 + 인메모리 TTL 캐시로 비용 최적화.
 """
 
@@ -20,8 +20,59 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 REPOS = {
     "딥레드": "taehyeung123/DeepRed",
     "deepred": "taehyeung123/DeepRed",
+    "레드랭크": "taehyeung123/redrank",
+    "redrank": "taehyeung123/redrank",
 }
 API_BASE = "https://api.github.com"
+
+
+# ─── 직원별 코드 접근 권한 ──────────────────────────────────
+# repos: 접근 가능한 리포 키 리스트
+# paths: 접근 가능한 폴더 접두사 (빈 리스트 = 전체)
+EMPLOYEE_CODE_ACCESS = {
+    # 컨트롤 타워 — 수진: 전체 접근
+    "sujin": {
+        "repos": ["딥레드", "레드랭크"],
+        "paths": [],  # 제한 없음
+    },
+    # 전략 기획실
+    "minsu": {
+        "repos": ["레드랭크"],
+        "paths": ["src/app/pages/", "src/data/", "src/app/components/"],
+    },
+    "siwoo": {
+        "repos": ["레드랭크"],
+        "paths": ["src/app/pages/Pricing", "src/app/pages/Payment", "src/app/pages/Subscription", "src/data/"],
+    },
+    # 예준: 코드 불필요 (데이터만)
+    # 프로덕트 랩
+    "seoyun": {
+        "repos": ["레드랭크"],
+        "paths": ["src/app/components/", "src/styles/", "src/index.css", "src/app/lib/"],
+    },
+    "junseo": {
+        "repos": ["레드랭크"],
+        "paths": ["package.json", "next.config", "vercel.json", "Dockerfile", ".github/"],
+    },
+    # 콘텐츠 & 그로스 — 은서, 도윤만 코드 필요
+    "eunseo": {
+        "repos": ["레드랭크"],
+        "paths": ["src/app/pages/"],  # 랜딩페이지/CTA 카피 확인
+    },
+    "doyun": {
+        "repos": ["레드랭크"],
+        "paths": ["src/app/layout", "src/app/page", "public/sitemap", "public/robots"],
+    },
+    # 보안 & 품질 — 태현: 전체, 채원: 테스트 관련
+    "taehyun": {
+        "repos": ["딥레드", "레드랭크"],
+        "paths": [],  # 보안 감사용 전체 접근
+    },
+    "chaewon": {
+        "repos": ["레드랭크"],
+        "paths": ["src/"],  # 전체 소스 (QA 테스트용)
+    },
+}
 
 # 코드 관련 키워드 — 이 키워드가 메시지에 있으면 코드 참조 트리거
 CODE_KEYWORDS = [
@@ -229,6 +280,20 @@ def search_relevant_files(repo: str, query: str, max_files: int = 3) -> list[dic
         "환경": ["env", "config"],
         "API": ["api", "endpoint"],
         "엔드포인트": ["api", "endpoint", "route"],
+        # 레드랭크 관련
+        "레드랭크": ["redrank", "pricing", "subscription", "payment"],
+        "구독": ["subscription", "Subscription", "pricing", "Pricing"],
+        "결제": ["payment", "Payment", "billing"],
+        "가격": ["pricing", "Pricing", "price"],
+        "키워드": ["keyword", "seo", "naver"],
+        "SEO": ["seo", "sitemap", "robots", "meta"],
+        "원고": ["manuscript", "content", "writing", "diagnosis"],
+        "진단": ["diagnosis", "analyze", "analysis"],
+        "블로그": ["blog", "content", "writing", "naver"],
+        "네이버": ["naver", "blog", "seo"],
+        "랜딩": ["landing", "Landing", "page"],
+        "온보딩": ["onboarding", "Onboarding"],
+        "코인": ["coin", "credit", "payment"],
     }
 
     for kr_key, en_vals in keyword_map.items():
@@ -283,12 +348,13 @@ def should_search_code(message: str) -> bool:
     return any(kw.lower() in msg_lower for kw in CODE_KEYWORDS)
 
 
-def get_code_context(message: str, max_tokens_approx: int = 3000) -> str:
+def get_code_context(message: str, max_tokens_approx: int = 3000,
+                     employee_id: str = None) -> str:
     """
     메시지 기반으로 코드 컨텍스트 생성.
-    build_context_for_claude()에서 호출.
+    employee_id가 주어지면 해당 직원의 접근 권한에 맞게 필터링.
     
-    반환: Claude에 전달할 [코드 참조] 텍스트
+    반환: LLM에 전달할 [코드 참조] 텍스트
     """
     if not should_search_code(message):
         return ""
@@ -296,13 +362,47 @@ def get_code_context(message: str, max_tokens_approx: int = 3000) -> str:
     if not GITHUB_TOKEN:
         return ""
 
+    # 직원별 접근 권한 확인
+    access = EMPLOYEE_CODE_ACCESS.get(employee_id) if employee_id else None
+    if employee_id and not access:
+        # 코드 접근 권한 없는 직원
+        return ""
+
+    # 접근 가능한 리포 결정
+    if access:
+        allowed_repos = {
+            name: path for name, path in REPOS.items()
+            if name in access["repos"]
+        }
+    else:
+        # employee_id 없으면 전체 (하위 호환)
+        allowed_repos = REPOS
+
+    # 중복 리포 제거 (딥레드/deepred 같은 리포)
+    seen_paths = set()
+    unique_repos = {}
+    for name, path in allowed_repos.items():
+        if path not in seen_paths:
+            seen_paths.add(path)
+            unique_repos[name] = path
+
     parts = ["[코드 참조]"]
     total_chars = 0
+    allowed_paths = access["paths"] if access else []
 
-    for repo_name, repo_path in REPOS.items():
+    for repo_name, repo_path in unique_repos.items():
         files = search_relevant_files(repo_path, message, max_files=3)
         if not files:
             continue
+
+        # 폴더 접근 제한 적용
+        if allowed_paths:
+            files = [
+                f for f in files
+                if any(f["path"].startswith(p) for p in allowed_paths)
+            ]
+            if not files:
+                continue
 
         parts.append(f"\n📂 {repo_name} ({repo_path})")
         for f in files:
@@ -358,5 +458,18 @@ def get_cache_stats() -> dict:
     return {
         "repos_configured": list(REPOS.keys()),
         "token_set": bool(GITHUB_TOKEN),
+        "employees_with_access": list(EMPLOYEE_CODE_ACCESS.keys()),
         **_cache.stats(),
+    }
+
+
+def get_employee_access_info(employee_id: str) -> dict:
+    """직원의 코드 접근 권한 조회"""
+    access = EMPLOYEE_CODE_ACCESS.get(employee_id)
+    if not access:
+        return {"has_access": False, "repos": [], "paths": []}
+    return {
+        "has_access": True,
+        "repos": access["repos"],
+        "paths": access["paths"] if access["paths"] else ["전체"],
     }

@@ -42,6 +42,22 @@ def get_employees():
     return EMPLOYEES
 
 
+@router.get("/employees/{employee_id}")
+def get_employee(employee_id: str):
+    """개별 직원 상세 정보"""
+    agent = next((e for e in EMPLOYEES if e["id"] == employee_id), None)
+    if not agent:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="직원을 찾을 수 없습니다.")
+    # 코드 접근 권한 정보 포함
+    try:
+        from github_reader import get_employee_access_info
+        agent_copy = {**agent, "code_access": get_employee_access_info(employee_id)}
+    except Exception:
+        agent_copy = {**agent, "code_access": {"has_access": False}}
+    return agent_copy
+
+
 @router.get("/projects")
 def get_projects():
     result = []

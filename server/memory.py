@@ -269,7 +269,7 @@ def build_context_for_claude(employee_id: str, current_message: str,
     # 2.5. 코드 컨텍스트 (GitHub 리포 참조)
     try:
         from github_reader import get_code_context
-        code_ctx = get_code_context(current_message)
+        code_ctx = get_code_context(current_message, employee_id=employee_id)
         if code_ctx:
             parts.append(f"\n{code_ctx}")
     except Exception as e:

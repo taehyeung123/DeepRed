@@ -81,6 +81,14 @@ def chat(req: ChatRequest):
             else:
                 history_text += f"\n{agent['name']}: {msg.get('content', '')}"
 
+    # 코드 컨텍스트 주입 (직원별 권한 기반)
+    code_context = ""
+    try:
+        from github_reader import get_code_context
+        code_context = get_code_context(req.message, employee_id=agent["id"])
+    except Exception:
+        pass
+
     system_prompt = f"""당신은 딥레드(DeepRed) AI 스타트업의 직원 '{agent['name']}'입니다.
 직책: {agent['role']} | 부서: {agent['department_name']}
 성격: {agent['personality']}
@@ -91,7 +99,11 @@ def chat(req: ChatRequest):
 1. 자신의 전문 분야에 맞게 2~3문장으로 간결하게 답합니다.
 2. 대표님(CEO)의 지시는 반드시 따릅니다.
 3. 자연스럽고 전문적인 톤으로 자기 성격에 맞게 대화합니다.
-4. 다른 부서와 관련된 질문이면 해당 부서 직원을 추천할 수 있습니다."""
+4. 다른 부서와 관련된 질문이면 해당 부서 직원을 추천할 수 있습니다.
+5. [코드 참조] 섹션이 있으면, 해당 코드를 참고하여 전문적으로 답변합니다."""
+
+    if code_context:
+        system_prompt += f"\n\n{code_context}"
 
     human = f"{history_text}\n\n대표님: {req.message}" if history_text else f"대표님: {req.message}"
 
