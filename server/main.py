@@ -30,6 +30,7 @@ from routes.telegram import router as telegram_router, stop_telegram_polling
 from routes.openclaw import router as openclaw_router
 from routes.system import router as system_router
 from routes.autonomy import router as autonomy_router
+from routes.security import router as security_router
 
 
 # ─── FastAPI 앱 ──────────────────────────────────────────
@@ -62,6 +63,7 @@ app.include_router(telegram_router)
 app.include_router(openclaw_router)
 app.include_router(system_router)
 app.include_router(autonomy_router)
+app.include_router(security_router)
 
 
 # ─── 서버 시작 시 초기화 ─────────────────────────────────

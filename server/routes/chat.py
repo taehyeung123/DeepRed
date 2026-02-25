@@ -116,6 +116,16 @@ def chat(req: ChatRequest):
     if data_context:
         system_prompt += f"\n\n{data_context}"
 
+    # 보안 컨텍스트 주입 (태현 전용)
+    if agent["id"] == "taehyun":
+        try:
+            from routes.security import security_summary
+            sec = security_summary()
+            if sec.get("text"):
+                system_prompt += f"\n\n{sec['text']}"
+        except Exception:
+            pass
+
     human = f"{history_text}\n\n대표님: {req.message}" if history_text else f"대표님: {req.message}"
 
     result = route_call(
