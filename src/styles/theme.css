@@ -1,33 +1,33 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* DeepRed Design Tokens */
+  /* DeepRed Design Tokens — Improved Visibility */
 
-  /* Colors — improved dark mode readability */
-  --dr-bg: #0d0d18;
-  --dr-bg-elevated: #151526;
-  --dr-bg-card: #1c1c32;
-  --dr-bg-hover: #282845;
+  /* Colors — brighter dark mode for readability */
+  --dr-bg: #13131f;
+  --dr-bg-elevated: #1a1a2e;
+  --dr-bg-card: #22223a;
+  --dr-bg-hover: #2e2e4a;
   --dr-accent: #E02050;
   --dr-accent-soft: rgba(224, 32, 80, 0.22);
   --dr-success: #4ade80;
   --dr-warning: #fcd34d;
   --dr-error: #fb7185;
   --dr-info: #7dd3fc;
-  --dr-text: #f8f8fc;
-  --dr-text-secondary: #d0d0e0;
-  --dr-text-muted: #9a9ab4;
-  --dr-text-dim: #8585a0;
-  --dr-glass-bg: rgba(28, 28, 50, 0.80);
-  --dr-glass-border: rgba(255, 255, 255, 0.16);
-  --dr-border: rgba(255, 255, 255, 0.16);
-  --dr-border-light: rgba(255, 255, 255, 0.12);
+  --dr-text: #f0f0f8;
+  --dr-text-secondary: #c8c8de;
+  --dr-text-muted: #a0a0bc;
+  --dr-text-dim: #8080a0;
+  --dr-glass-bg: rgba(34, 34, 58, 0.85);
+  --dr-glass-border: rgba(255, 255, 255, 0.22);
+  --dr-border: rgba(255, 255, 255, 0.18);
+  --dr-border-light: rgba(255, 255, 255, 0.14);
   --dr-accent-gradient: linear-gradient(135deg, #E02050, #b91c3c);
 
   /* Department Colors */
   --dept-coo: #E02050;
   --dept-planning: #5b9cf6;
-  --dept-security: #7b8fa6;
+  --dept-security: #8fa0b8;
   --dept-design: #f472b6;
   --dept-content: #f5a623;
   --dept-marketing: #4ade80;
@@ -53,7 +53,7 @@
   --radius-button: 8px;
   --radius-badge: 9999px;
 
-  /* Shadows */
+  /* Shadows — softer for brighter backgrounds */
   --shadow-glow-accent: 0 0 24px rgba(220, 20, 60, 0.25);
   --shadow-glow-success: 0 0 16px rgba(52, 211, 153, 0.3);
   --shadow-glow-warning: 0 0 16px rgba(251, 191, 36, 0.3);
@@ -84,6 +84,7 @@
   --font-weight-medium: 600;
   --font-weight-normal: 400;
 }
+
 
 /* ─── Light Theme ─── */
 html.light {
@@ -239,11 +240,11 @@ html.light ::-webkit-scrollbar-thumb:hover {
   /* Glass card effect — improved visibility */
   .glass-card {
     background: var(--dr-glass-bg);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.20);
     border-radius: var(--radius-card);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
   }
 
   /* Status dot animations */
@@ -265,12 +266,12 @@ html.light ::-webkit-scrollbar-thumb:hover {
 
   /* Legacy utility classes for OrganizationChart */
   .glass-card-strong {
-    background: rgba(22, 22, 42, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(30, 30, 52, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: var(--radius-card);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
   .dr-avatar {

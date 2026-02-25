@@ -39,3 +39,5 @@ server/avatars.json
 
 # Gemini agent
 .gemini/
+.vercel
+.env*.local
