@@ -13,6 +13,7 @@ import {
   Hash,
   Circle,
   CalendarDays,
+  Home,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AvatarRenderer } from './avatar/AvatarRenderer';
@@ -28,7 +29,8 @@ const menuSections = [
   {
     title: '메인',
     items: [
-      { path: '/', label: '대시보드', icon: LayoutDashboard },
+      { path: '/', label: '홈', icon: Home },
+      { path: '/dashboard', label: '대시보드', icon: LayoutDashboard },
       { path: '/messenger', label: '메신저', icon: MessageSquare },
     ],
   },

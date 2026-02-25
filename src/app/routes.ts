@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router';
 import { Layout } from './components/Layout';
+import { Home } from './pages/Home';
 import { Messenger } from './pages/Messenger';
 import { Dashboard } from './pages/Dashboard';
 import { OrganizationChart as Organization } from './components/OrganizationChart';
@@ -16,7 +17,8 @@ export const router = createBrowserRouter([
         path: '/',
         Component: Layout,
         children: [
-            { index: true, Component: Dashboard },
+            { index: true, Component: Home },
+            { path: 'dashboard', Component: Dashboard },
             { path: 'messenger', Component: Messenger },
             { path: 'messenger/:employeeId', Component: Messenger },
             { path: 'organization', Component: Organization },
