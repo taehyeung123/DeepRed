@@ -55,7 +55,9 @@ function syncToServer(store: AvatarStore) {
             ceoName: store.ceoName,
             employees: store.employees,
         }),
-    }).catch(() => { /* silent */ })
+    })
+        .then(res => { if (!res.ok) console.warn('⚠️ Avatar sync failed:', res.status) })
+        .catch(err => console.warn('⚠️ Avatar sync error:', err))
 }
 
 function emitChange() {
@@ -82,7 +84,10 @@ function updateStore(updater: (prev: AvatarStore) => AvatarStore) {
 fetch(`${API_BASE}/api/avatars`)
     .then(res => res.json())
     .then(data => {
-        if (data && (isValidConfig(data.ceo) || Object.keys(data.employees || {}).length > 0)) {
+        const serverHasData = data && (isValidConfig(data.ceo) || Object.keys(data.employees || {}).length > 0)
+
+        if (serverHasData) {
+            // 서버에 데이터 있으면 → 서버 우선
             _store = {
                 version: STORE_VERSION,
                 ceo: isValidConfig(data.ceo) ? data.ceo : _store.ceo,
@@ -95,6 +100,9 @@ fetch(`${API_BASE}/api/avatars`)
             }
             saveToLocal(_store)
             emitChange()
+        } else {
+            // 서버 비어있으면 → 로컬 데이터를 서버에 업로드
+            syncToServer(_store)
         }
         _serverLoaded = true
     })
