@@ -214,7 +214,7 @@ tool로 데이터를 가져온 후에는, 그 데이터를 반드시 정리해�
             client = _get_claude()
             response, model_used = chat_with_tools(
                 client, system_prompt, human,
-                temperature=0.8, max_tokens=1500,
+                temperature=0.8, max_tokens=2500,
             )
         except Exception as e:
             print(f"⚠️ Sujin tool_use 실패 → route_call 폴백: {str(e)[:100]}")
