@@ -10,8 +10,10 @@ from fastapi import APIRouter, Request
 router = APIRouter(prefix="/api", tags=["avatar"])
 
 _AVATAR_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "server", "avatars.json")
-# 실제 위치: server/avatars.json
-_AVATAR_FILE = os.path.join(os.path.dirname(__file__), "..", "avatars.json")
+# Docker: /app/data/avatars.json (영구 볼륨), 로컬: server/avatars.json
+_DATA_DIR = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), ".."))
+_AVATAR_FILE = os.path.join(_DATA_DIR, "avatars.json")
+os.makedirs(os.path.dirname(_AVATAR_FILE), exist_ok=True)
 
 
 def _load_avatar_data() -> dict:

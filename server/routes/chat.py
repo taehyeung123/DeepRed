@@ -136,11 +136,12 @@ def chat(req: ChatRequest):
         max_tokens=500,
     )
     response = result["response"]
+    model_used = result["model"]
 
     # 활동 로그
     add_activity_log(
         agent["id"], agent["name"], agent["department"],
-        f"CEO와 1:1 대화 — '{req.message[:30]}...' 응답 완료", "report", "💬"
+        f"CEO와 1:1 대화 — '{req.message[:30]}...' ({model_used}) 응답 완료", "report", "💬"
     )
     tracker.record_activity(agent["id"], "chat")
 
@@ -155,7 +156,7 @@ def chat(req: ChatRequest):
     ]
     db.save_conversation(agent["id"], agent["name"], "chat", messages)
 
-    return {"name": agent["name"], "message": response}
+    return {"name": agent["name"], "message": response, "model": model_used}
 
 
 def _chat_sujin(req: ChatRequest, agent: dict):

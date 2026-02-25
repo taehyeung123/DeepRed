@@ -29,8 +29,11 @@ services:
       - "8000"
     env_file:
       - .env.production
+    environment:
+      - DATA_DIR=/app/data
     volumes:
       - api-logs:/app/logs
+      - api-data:/app/data
     restart: always
     depends_on:
       - redis
@@ -52,6 +55,7 @@ services:
 
 volumes:
   api-logs:
+  api-data:
   redis-data:
   certbot-etc:
   certbot-var:
