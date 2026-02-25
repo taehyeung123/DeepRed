@@ -197,8 +197,12 @@ def _chat_sujin(req: ChatRequest, agent: dict):
 제공된 tool(함수)을 사용해서 직원 명단, 프로젝트 현황, 시스템 상태, 활동 로그,
 부서 현황, 업무일지, 레드랭크 운영 데이터, 보안 상태를 직접 조회할 수 있습니다.
 대표님이 무언가 물어보면, 필요한 데이터를 tool로 먼저 조회한 뒤 답변하세요.
-예: "직원 현황 알려줘" → get_employees 호출 → 결과를 보고 답변
-추측하지 말고 반드시 데이터를 확인하고 답변하세요."""
+예: "직원 현황 알려줘" → get_employees 호출 → 결과를 정리해서 보고
+추측하지 말고 반드시 데이터를 확인하고 답변하세요.
+
+[절대 금지] "데이터 조회를 완료했습니다" 같은 메타 발언 금지.
+tool로 데이터를 가져온 후에는, 그 데이터를 반드시 정리해서 자연스럽게 보고하세요.
+데이터를 가져왔으면 바로 내용을 보여주세요. 과정 설명 없이 결과만 보고."""
 
     human = f"{context}\n\n대표님: {req.message}" if context else f"대표님: {req.message}"
 
@@ -210,7 +214,7 @@ def _chat_sujin(req: ChatRequest, agent: dict):
             client = _get_claude()
             response, model_used = chat_with_tools(
                 client, system_prompt, human,
-                temperature=0.8, max_tokens=800,
+                temperature=0.8, max_tokens=1500,
             )
         except Exception as e:
             print(f"⚠️ Sujin tool_use 실패 → route_call 폴백: {str(e)[:100]}")

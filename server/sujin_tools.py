@@ -247,9 +247,10 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
 # ─── Claude Tool Use 대화 (multi-turn) ──────────────────
 def chat_with_tools(client, system_prompt: str, user_message: str,
-                    temperature: float = 0.8, max_tokens: int = 800) -> tuple[str, str]:
+                    temperature: float = 0.8, max_tokens: int = 1500) -> tuple[str, str]:
     """
     Claude tool_use를 사용한 대화. 수진이 필요한 데이터를 자율적으로 조회.
+    tool 호출 시 max_tokens=400 (짧은 tool_use 블록), 최종 응답 시 max_tokens=1500 (데이터 포함 답변)
 
     Returns:
         (response_text, model_name)
@@ -258,23 +259,25 @@ def chat_with_tools(client, system_prompt: str, user_message: str,
     model = "claude-sonnet-4-20250514"
 
     # 최대 3회 tool use 반복
-    for _ in range(3):
+    for i in range(3):
         response = client.messages.create(
             model=model,
-            max_tokens=max_tokens,
+            max_tokens=500,  # tool 호출용 — 짧은 블록
             system=system_prompt,
             messages=messages,
             tools=SUJIN_TOOLS,
             temperature=temperature,
         )
 
-        # tool_use가 없으면 최종 응답
+        # tool_use가 없으면 최종 응답 — 토큰 넉넉하게 재요청
         if response.stop_reason != "tool_use":
             text = ""
             for block in response.content:
                 if hasattr(block, "text"):
                     text += block.text
-            return text.strip(), "claude-sonnet"
+            if text.strip():
+                return text.strip(), "claude-sonnet"
+            # 텍스트가 비어있으면 아래 최종 호출로
 
         # tool_use 처리
         assistant_content = response.content
@@ -290,11 +293,26 @@ def chat_with_tools(client, system_prompt: str, user_message: str,
                     "content": result,
                 })
 
-        messages.append({"role": "user", "content": tool_results})
+        if tool_results:
+            messages.append({"role": "user", "content": tool_results})
 
-    # 반복 초과 시 마지막 응답에서 텍스트 추출
-    text = ""
-    for block in response.content:
-        if hasattr(block, "text"):
-            text += block.text
-    return text.strip() if text else "데이터 조회를 완료했습니다.", "claude-sonnet"
+    # 최종 응답: tool 없이 텍스트만 생성 — 토큰 충분히 할당
+    try:
+        final = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=messages,
+            temperature=temperature,
+        )
+        text = ""
+        for block in final.content:
+            if hasattr(block, "text"):
+                text += block.text
+        if text.strip():
+            return text.strip(), "claude-sonnet"
+    except Exception as e:
+        print(f"⚠️ chat_with_tools 최종 응답 실패: {str(e)[:100]}")
+
+    return "시스템 데이터를 조회했으나 응답 생성에 실패했습니다. 다시 질문해주세요.", "claude-sonnet"
+
