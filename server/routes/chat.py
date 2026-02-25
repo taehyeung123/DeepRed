@@ -161,32 +161,20 @@ def chat(req: ChatRequest):
 
 def _chat_sujin(req: ChatRequest, agent: dict):
     """
-    수진(COO) 채팅 — 이중 엔진 아키텍처
+    수진(COO) 채팅 — Tool Use 아키텍처
     Gemini(무료) = 메모리 엔진: 전체 대화 분석 → 컨텍스트 압축
-    Claude(유료) = 대화 엔진: 압축된 컨텍스트로 응답 생성
+    Claude(유료) = 대화 엔진 + Tool Use: 내부 API 자율 호출
     """
     import json as _json
     from memory import build_context_for_claude, summarize_session
+    from llm_router import _get_claude, is_claude_available
 
     sujin = next(e for e in EMPLOYEES if e["id"] == "sujin")
 
     # 1단계: Gemini(무료)로 컨텍스트 압축
     context = build_context_for_claude("sujin", req.message, req.history or [])
 
-    # 2단계: 수진 시스템 프롬프트
-    # 회사 내부 데이터 구성 (직원, 부서, 프로젝트)
-    dept_map: dict[str, list] = {}
-    for e in EMPLOYEES:
-        d = e.get("department_name", "기타")
-        dept_map.setdefault(d, []).append(f"{e['name']}({e['role']})")
-    dept_text = "\n".join(f"  - {d}: {', '.join(ms)}" for d, ms in dept_map.items())
-
-    proj_map: dict[str, list] = {}
-    for e in EMPLOYEES:
-        for p in e.get("projects", []):
-            proj_map.setdefault(p, []).append(e["name"])
-    proj_text = "\n".join(f"  - {p}: {', '.join(ms)}" for p, ms in proj_map.items())
-
+    # 2단계: 시스템 프롬프트 (tool use 지시 포함)
     system_prompt = f"""당신은 딥레드(DeepRed) AI 스타트업의 COO 박수진입니다.
 직책: {sujin['role']}
 성격: {sujin['personality']}
@@ -198,47 +186,46 @@ def _chat_sujin(req: ChatRequest, agent: dict):
 
 당신은 회사의 GitHub 리포지토리에 읽기 권한이 있습니다.
 [코드 참조] 섹션이 제공되면, 해당 코드를 자연스럽게 참조하여 답변하세요.
-코드를 그대로 복붙하지 말고, 핵심을 파악해서 사람 말투로 설명하세요.
 
-[회사 현황 — COO 대시보드]
-총 직원: {len(EMPLOYEES)}명
-부서별 인원:
-{dept_text}
-프로젝트 배정:
-{proj_text}
+[중요] 당신은 회사 내부 시스템에 접근할 수 있습니다.
+제공된 tool(함수)을 사용해서 직원 명단, 프로젝트 현황, 시스템 상태, 활동 로그,
+부서 현황, 업무일지, 레드랭크 운영 데이터, 보안 상태를 직접 조회할 수 있습니다.
+대표님이 무언가 물어보면, 필요한 데이터를 tool로 먼저 조회한 뒤 답변하세요.
+예: "직원 현황 알려줘" → get_employees 호출 → 결과를 보고 답변
+추측하지 말고 반드시 데이터를 확인하고 답변하세요."""
 
-위 데이터는 실시간 시스템에서 가져온 것입니다. COO로서 이 데이터를 활용해 답변하세요."""
-
-    # 코드 컨텍스트 주입
-    try:
-        from github_reader import get_code_context
-        code_ctx = get_code_context(req.message, employee_id="sujin")
-        if code_ctx:
-            system_prompt += f"\n\n{code_ctx}"
-    except Exception:
-        pass
-
-    # 레드랭크 운영 데이터 주입
-    try:
-        from redrank_data import get_data_for_employee
-        data_ctx = get_data_for_employee("sujin")
-        if data_ctx:
-            system_prompt += f"\n\n{data_ctx}"
-    except Exception:
-        pass
-
-    # 3단계: Claude에 압축된 컨텍스트만 전송
     human = f"{context}\n\n대표님: {req.message}" if context else f"대표님: {req.message}"
 
-    result = route_call(
-        employee_id="sujin",
-        system_prompt=system_prompt,
-        user_message=human,
-        temperature=0.8,
-        max_tokens=800,
-    )
-    response = result["response"]
-    model_used = result["model"]
+    # 3단계: Claude tool_use로 대화 (Claude 사용 가능 시)
+    model_used = "gemini-flash"
+    if is_claude_available():
+        try:
+            from sujin_tools import chat_with_tools
+            client = _get_claude()
+            response, model_used = chat_with_tools(
+                client, system_prompt, human,
+                temperature=0.8, max_tokens=800,
+            )
+        except Exception as e:
+            print(f"⚠️ Sujin tool_use 실패 → route_call 폴백: {str(e)[:100]}")
+            result = route_call(
+                employee_id="sujin",
+                system_prompt=system_prompt,
+                user_message=human,
+                temperature=0.8, max_tokens=800,
+            )
+            response = result["response"]
+            model_used = result["model"]
+    else:
+        # Claude 없으면 일반 route_call (Gemini)
+        result = route_call(
+            employee_id="sujin",
+            system_prompt=system_prompt,
+            user_message=human,
+            temperature=0.8, max_tokens=800,
+        )
+        response = result["response"]
+        model_used = result["model"]
 
     # 활동 로그
     add_activity_log(
