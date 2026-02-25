@@ -174,6 +174,19 @@ def _chat_sujin(req: ChatRequest, agent: dict):
     context = build_context_for_claude("sujin", req.message, req.history or [])
 
     # 2단계: 수진 시스템 프롬프트
+    # 회사 내부 데이터 구성 (직원, 부서, 프로젝트)
+    dept_map: dict[str, list] = {}
+    for e in EMPLOYEES:
+        d = e.get("department_name", "기타")
+        dept_map.setdefault(d, []).append(f"{e['name']}({e['role']})")
+    dept_text = "\n".join(f"  - {d}: {', '.join(ms)}" for d, ms in dept_map.items())
+
+    proj_map: dict[str, list] = {}
+    for e in EMPLOYEES:
+        for p in e.get("projects", []):
+            proj_map.setdefault(p, []).append(e["name"])
+    proj_text = "\n".join(f"  - {p}: {', '.join(ms)}" for p, ms in proj_map.items())
+
     system_prompt = f"""당신은 딥레드(DeepRed) AI 스타트업의 COO 박수진입니다.
 직책: {sujin['role']}
 성격: {sujin['personality']}
@@ -185,7 +198,34 @@ def _chat_sujin(req: ChatRequest, agent: dict):
 
 당신은 회사의 GitHub 리포지토리에 읽기 권한이 있습니다.
 [코드 참조] 섹션이 제공되면, 해당 코드를 자연스럽게 참조하여 답변하세요.
-코드를 그대로 복붙하지 말고, 핵심을 파악해서 사람 말투로 설명하세요."""
+코드를 그대로 복붙하지 말고, 핵심을 파악해서 사람 말투로 설명하세요.
+
+[회사 현황 — COO 대시보드]
+총 직원: {len(EMPLOYEES)}명
+부서별 인원:
+{dept_text}
+프로젝트 배정:
+{proj_text}
+
+위 데이터는 실시간 시스템에서 가져온 것입니다. COO로서 이 데이터를 활용해 답변하세요."""
+
+    # 코드 컨텍스트 주입
+    try:
+        from github_reader import get_code_context
+        code_ctx = get_code_context(req.message, employee_id="sujin")
+        if code_ctx:
+            system_prompt += f"\n\n{code_ctx}"
+    except Exception:
+        pass
+
+    # 레드랭크 운영 데이터 주입
+    try:
+        from redrank_data import get_data_for_employee
+        data_ctx = get_data_for_employee("sujin")
+        if data_ctx:
+            system_prompt += f"\n\n{data_ctx}"
+    except Exception:
+        pass
 
     # 3단계: Claude에 압축된 컨텍스트만 전송
     human = f"{context}\n\n대표님: {req.message}" if context else f"대표님: {req.message}"
