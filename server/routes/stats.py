@@ -54,3 +54,32 @@ def get_activity_history(days: int = 7):
 def get_activity_log(limit: int = 20):
     """실제 활동 로그만 반환"""
     return {"logs": activity_log[:limit]}
+
+
+@router.get("/redrank/stats")
+def get_redrank_stats(employee_id: str = "sujin"):
+    """레드랭크 운영 데이터 (직원별 권한 기반)"""
+    try:
+        from redrank_data import (
+            get_total_users, get_revenue_stats,
+            get_usage_stats, get_activity_overview,
+            EMPLOYEE_DATA_ACCESS, is_available,
+        )
+        if not is_available():
+            return {"available": False, "message": "RedRank Supabase 미연결"}
+
+        access = EMPLOYEE_DATA_ACCESS.get(employee_id, [])
+        result = {"available": True, "employee_id": employee_id}
+
+        if "users" in access:
+            result["users"] = get_total_users()
+        if "revenue" in access:
+            result["revenue"] = get_revenue_stats()
+        if "usage" in access:
+            result["usage"] = get_usage_stats()
+        if "activity" in access:
+            result["activity"] = get_activity_overview()
+
+        return result
+    except Exception as e:
+        return {"available": False, "error": str(e)[:200]}

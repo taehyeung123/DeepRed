@@ -89,6 +89,14 @@ def chat(req: ChatRequest):
     except Exception:
         pass
 
+    # 레드랭크 운영 데이터 주입 (직원별 권한 기반)
+    data_context = ""
+    try:
+        from redrank_data import get_data_for_employee
+        data_context = get_data_for_employee(agent["id"])
+    except Exception:
+        pass
+
     system_prompt = f"""당신은 딥레드(DeepRed) AI 스타트업의 직원 '{agent['name']}'입니다.
 직책: {agent['role']} | 부서: {agent['department_name']}
 성격: {agent['personality']}
@@ -100,10 +108,13 @@ def chat(req: ChatRequest):
 2. 대표님(CEO)의 지시는 반드시 따릅니다.
 3. 자연스럽고 전문적인 톤으로 자기 성격에 맞게 대화합니다.
 4. 다른 부서와 관련된 질문이면 해당 부서 직원을 추천할 수 있습니다.
-5. [코드 참조] 섹션이 있으면, 해당 코드를 참고하여 전문적으로 답변합니다."""
+5. [코드 참조] 섹션이 있으면, 해당 코드를 참고하여 전문적으로 답변합니다.
+6. [레드랭크 운영 현황] 섹션이 있으면, 실제 데이터를 기반으로 답변합니다."""
 
     if code_context:
         system_prompt += f"\n\n{code_context}"
+    if data_context:
+        system_prompt += f"\n\n{data_context}"
 
     human = f"{history_text}\n\n대표님: {req.message}" if history_text else f"대표님: {req.message}"
 
