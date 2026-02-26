@@ -75,6 +75,7 @@ def exchange_code(auth_code: str) -> dict:
     """인증 코드 → access_token + refresh_token 교환"""
     import urllib.request
     import urllib.parse
+    import urllib.error
 
     data = urllib.parse.urlencode({
         "grant_type": "authorization_code",
@@ -103,6 +104,10 @@ def exchange_code(auth_code: str) -> dict:
         print(f"✅ 카카오 토큰 발급 완료 (유효: {result.get('expires_in', 0) // 3600}시간)")
         return {"success": True, "expires_in": result.get("expires_in", 0)}
 
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8", errors="ignore")
+        print(f"❌ 카카오 토큰 발급 실패: HTTP {e.code} — {error_body}")
+        return {"success": False, "error": f"HTTP {e.code}: {error_body}"}
     except Exception as e:
         print(f"❌ 카카오 토큰 발급 실패: {e}")
         return {"success": False, "error": str(e)}

@@ -52,10 +52,12 @@ def kakao_callback(code: str = None, error: str = None):
         </body></html>
         """)
     else:
+        error_detail = result.get('error', '알 수 없는 오류')
         return HTMLResponse(f"""
         <html><body style="font-family:sans-serif;text-align:center;padding:50px">
         <h2>❌ 토큰 발급 실패</h2>
-        <p>{result.get('error', '알 수 없는 오류')}</p>
+        <p style="color:red;word-break:break-all">{error_detail}</p>
+        <p style="margin-top:20px"><a href="/api/kakao/auth">다시 시도</a></p>
         </body></html>
         """)
 
