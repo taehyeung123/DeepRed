@@ -123,6 +123,46 @@ SUJIN_TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "assign_task",
+        "description": "직원에게 업무를 지시합니다. 작업 큐에 추가되어 자동 실행됩니다.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "employee_id": {
+                    "type": "string",
+                    "description": "담당 직원 ID (예: eunseo, doyun, siwoo 등)",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "작업 제목",
+                },
+                "instruction": {
+                    "type": "string",
+                    "description": "작업 내용 및 지시사항 (상세할수록 좋음)",
+                },
+            },
+            "required": ["employee_id", "title", "instruction"],
+        },
+    },
+    {
+        "name": "get_task_status",
+        "description": "작업 큐 현황 조회. 대기/진행/완료된 작업 목록과 통계",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "필터 (pending, in_progress, done, failed). 생략 시 전체",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "가져올 작업 수 (기본 10)",
+                },
+            },
+            "required": [],
+        },
+    },
 ]
 
 
@@ -237,6 +277,57 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                 return json.dumps(security_summary(), ensure_ascii=False)
             except Exception as ex:
                 return json.dumps({"error": f"보안 상태 조회 실패: {str(ex)[:100]}"}, ensure_ascii=False)
+
+        elif tool_name == "assign_task":
+            try:
+                from task_queue import create_task
+                employee_id = tool_input.get("employee_id", "")
+                title = tool_input.get("title", "")
+                instruction = tool_input.get("instruction", "")
+                if not employee_id or not title:
+                    return json.dumps({"error": "employee_id와 title은 필수입니다."}, ensure_ascii=False)
+                # 직원 존재 확인
+                emp = next((e for e in EMPLOYEES if e["id"] == employee_id), None)
+                if not emp:
+                    return json.dumps({"error": f"직원 '{employee_id}'을 찾을 수 없습니다."}, ensure_ascii=False)
+                task = create_task(
+                    assigned_to=employee_id,
+                    title=title,
+                    instruction=instruction,
+                    assigned_by="sujin",
+                )
+                return json.dumps({
+                    "success": True,
+                    "task_id": task["task_id"],
+                    "message": f"{emp['name']}에게 '{title}' 작업을 지시했습니다. 5분 내 자동 실행됩니다.",
+                }, ensure_ascii=False)
+            except Exception as ex:
+                return json.dumps({"error": f"작업 지시 실패: {str(ex)[:100]}"}, ensure_ascii=False)
+
+        elif tool_name == "get_task_status":
+            try:
+                from task_queue import get_tasks, get_queue_stats
+                status_filter = tool_input.get("status")
+                limit = tool_input.get("limit", 10)
+                tasks = get_tasks(status=status_filter, limit=limit)
+                stats = get_queue_stats()
+                result = {
+                    "stats": stats,
+                    "tasks": [
+                        {
+                            "task_id": t["task_id"],
+                            "title": t["title"],
+                            "assigned_to": t["assigned_to"],
+                            "status": t["status"],
+                            "result": (t.get("result") or "")[:200] if t.get("result") else None,
+                            "created_at": t["created_at"],
+                        }
+                        for t in tasks
+                    ],
+                }
+                return json.dumps(result, ensure_ascii=False)
+            except Exception as ex:
+                return json.dumps({"error": f"작업 현황 조회 실패: {str(ex)[:100]}"}, ensure_ascii=False)
 
         else:
             return json.dumps({"error": f"알 수 없는 도구: {tool_name}"}, ensure_ascii=False)

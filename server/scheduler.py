@@ -188,6 +188,14 @@ SCHEDULED_JOBS = [
         "minutes": 10,
         "description": "10분마다 — 수진이 시스템 상태 체크 및 대표님께 자율 보고",
     },
+    {
+        "id": "task_queue_processor",
+        "name": "작업 큐 처리",
+        "function": None,  # 아래 start_scheduler에서 동적 바인딩
+        "trigger": "interval",
+        "minutes": 5,
+        "description": "5분마다 — 대기 작업을 직원 AI에게 전달하여 실행",
+    },
 ]
 
 
@@ -226,6 +234,21 @@ def start_scheduler():
                 break
     except Exception as e:
         print(f"⚠️ 수진 자율 메시지 바인딩 실패: {e}")
+
+    # 작업 큐 처리 함수 동적 바인딩
+    try:
+        from task_queue import process_pending_tasks
+        from deps import EMPLOYEES
+        def _task_queue_wrapper():
+            result = process_pending_tasks(EMPLOYEES, max_per_batch=3)
+            processed = result.get("processed", 0)
+            _record_job("task_queue_processor", "success", f"{processed}건 처리" if processed else "대기 작업 없음")
+        for job in SCHEDULED_JOBS:
+            if job["id"] == "task_queue_processor":
+                job["function"] = _task_queue_wrapper
+                break
+    except Exception as e:
+        print(f"⚠️ 작업 큐 처리 바인딩 실패: {e}")
 
     for job in SCHEDULED_JOBS:
         if job["function"] is None:
