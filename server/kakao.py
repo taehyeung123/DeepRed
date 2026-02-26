@@ -15,6 +15,7 @@ load_dotenv()
 
 # ─── 카카오 설정 ──────────────────────────────────────────
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY", "")
+KAKAO_CLIENT_SECRET = os.getenv("KAKAO_CLIENT_SECRET", "")
 KAKAO_REDIRECT_URI = os.getenv("KAKAO_REDIRECT_URI", "http://localhost:8000/api/kakao/callback")
 
 # 토큰 저장 (파일 기반 — Docker volume으로 영구 보존)
@@ -77,12 +78,16 @@ def exchange_code(auth_code: str) -> dict:
     import urllib.parse
     import urllib.error
 
-    data = urllib.parse.urlencode({
+    params = {
         "grant_type": "authorization_code",
         "client_id": KAKAO_REST_API_KEY,
         "redirect_uri": KAKAO_REDIRECT_URI,
         "code": auth_code,
-    }).encode()
+    }
+    if KAKAO_CLIENT_SECRET:
+        params["client_secret"] = KAKAO_CLIENT_SECRET
+
+    data = urllib.parse.urlencode(params).encode()
 
     req = urllib.request.Request(
         "https://kauth.kakao.com/oauth/token",
@@ -122,11 +127,15 @@ def _refresh_token() -> bool:
         print("⚠️ 카카오 refresh_token 없음 — 재인증 필요")
         return False
 
-    data = urllib.parse.urlencode({
+    params = {
         "grant_type": "refresh_token",
         "client_id": KAKAO_REST_API_KEY,
         "refresh_token": _tokens["refresh_token"],
-    }).encode()
+    }
+    if KAKAO_CLIENT_SECRET:
+        params["client_secret"] = KAKAO_CLIENT_SECRET
+
+    data = urllib.parse.urlencode(params).encode()
 
     req = urllib.request.Request(
         "https://kauth.kakao.com/oauth/token",
