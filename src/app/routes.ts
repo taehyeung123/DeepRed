@@ -10,6 +10,7 @@ import { Meetings } from './pages/Meetings';
 import { Attendance } from './pages/Attendance';
 import { Announcements } from './pages/Announcements';
 import { System } from './pages/System';
+import { Settings } from './pages/Settings';
 import { Profile } from './pages/Profile';
 
 export const router = createBrowserRouter([
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
             { path: 'attendance', Component: Attendance },
             { path: 'announcements', Component: Announcements },
             { path: 'system', Component: System },
+            { path: 'settings', Component: Settings },
             { path: 'profile', Component: Profile },
         ],
     },

@@ -135,21 +135,42 @@ def _generate_morning_briefing_ai() -> str | None:
     try:
         from llm_router import _get_claude, is_claude_available
         from sujin_tools import chat_with_tools
+        from report_settings import get_enabled_items
 
         if not is_claude_available():
             print("  ⚠️ Claude 미사용 → 하드코딩 브리핑 폴백")
             return _generate_morning_briefing_fallback()
 
         client = _get_claude()
+        enabled = get_enabled_items()
+
+        # 활성화된 보고 항목에 따라 지시사항 구성
+        item_instructions = []
+        if "api_usage" in enabled:
+            item_instructions.append("- API 호출 통계와 예상 비용을 get_system_health로 확인")
+        if "employee_activity" in enabled:
+            item_instructions.append("- get_activity_log로 직원들의 최근 업무 성과를 분석")
+        if "system_health" in enabled:
+            item_instructions.append("- get_system_health로 서버/DB 상태를 점검")
+        if "task_queue" in enabled:
+            item_instructions.append("- get_task_status로 작업 큐 현황을 확인")
+        if "security" in enabled:
+            item_instructions.append("- 보안 스캔 결과 및 위협 감지 여부 보고")
+        if "project_progress" in enabled:
+            item_instructions.append("- 프로젝트별 진행 상황 요약")
+
+        items_text = "\n".join(item_instructions) if item_instructions else "- get_system_health와 get_employees로 전반적 상태 파악"
 
         system_prompt = (
             "당신은 딥레드 AI 회사의 COO 수진입니다. "
             "매일 아침 09:00에 CEO 대표님께 브리핑을 올립니다.\n\n"
-            "[지시사항]\n"
-            "1. get_employees, get_system_health, get_activity_log 도구를 호출해서 현재 상태를 파악하세요.\n"
-            "2. 파악한 데이터를 분석하여 간결하고 유용한 아침 브리핑을 작성하세요.\n"
-            "3. 형식: 이모지 포함 마크다운, 핵심 2~3줄 + 상세 항목\n"
-            "4. 톤: 밝고 프로페셔널한 COO의 보고체\n"
+            "[보고 항목 — 아래 항목들만 보고하세요]\n"
+            f"{items_text}\n\n"
+            "[작성 규칙]\n"
+            "1. 위 항목의 도구를 호출해서 실제 데이터를 파악하세요.\n"
+            "2. 형식적인 인사말 없이 바로 핵심 데이터를 보고하세요.\n"
+            "3. 이모지 포함 마크다운, 각 항목 2~3줄\n"
+            "4. 문제가 있으면 반드시 대표님 판단이 필요한 부분을 강조하세요.\n"
             "5. 500자 이내로 작성하세요."
         )
         user_message = "오늘 아침 브리핑을 생성해주세요."

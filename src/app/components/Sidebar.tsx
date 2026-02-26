@@ -14,6 +14,7 @@ import {
   Circle,
   CalendarDays,
   Home,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AvatarRenderer } from './avatar/AvatarRenderer';
@@ -48,6 +49,7 @@ const menuSections = [
       { path: '/organization', label: '조직도', icon: Users },
       { path: '/attendance', label: '출근부', icon: CalendarDays },
       { path: '/announcements', label: '공지사항', icon: Megaphone },
+      { path: '/settings', label: '보고 설정', icon: SlidersHorizontal },
       { path: '/system', label: '시스템', icon: Settings },
     ],
   },
