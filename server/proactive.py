@@ -311,18 +311,27 @@ def _check_task_queue_status() -> str | None:
         return None
 
 
-# ─── 텔레그램 알림 전송 ──────────────────────────────────
+# ─── 외부 알림 전송 (텔레그램 + 카카오) ──────────────────
 
 def _send_telegram_notification(title: str, body: str):
-    """브리핑/보고 생성 시 텔레그램으로 알림 전송"""
+    """브리핑/보고 생성 시 텔레그램 + 카카오로 알림 전송"""
+    # 텔레그램
     try:
         from notifications import is_telegram_available, send_telegram_sync
-        if not is_telegram_available():
-            return
-        
-        # HTML 포맷으로 전송
-        message = f"<b>{title}</b>\n\n{body[:500]}"
-        send_telegram_sync(message, parse_mode="HTML")
-        print(f"  📱 텔레그램 전송 완료: {title}")
+        if is_telegram_available():
+            message = f"<b>{title}</b>\n\n{body[:500]}"
+            send_telegram_sync(message, parse_mode="HTML")
+            print(f"  📱 텔레그램 전송 완료: {title}")
     except Exception as e:
         print(f"  ⚠️ 텔레그램 전송 실패: {e}")
+
+    # 카카오 나에게 보내기
+    try:
+        from kakao import is_kakao_available, send_to_me
+        if is_kakao_available():
+            kakao_text = f"{title}\n\n{body[:450]}"
+            send_to_me(kakao_text)
+            print(f"  💬 카카오 전송 완료: {title}")
+    except Exception as e:
+        print(f"  ⚠️ 카카오 전송 실패: {e}")
+

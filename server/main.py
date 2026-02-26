@@ -33,6 +33,7 @@ from routes.openclaw import router as openclaw_router
 from routes.system import router as system_router
 from routes.autonomy import router as autonomy_router
 from routes.security import router as security_router
+from routes.kakao import router as kakao_router
 
 
 # ─── FastAPI Lifespan (Docker 호환 스케줄러) ──────────────
@@ -102,6 +103,7 @@ app.include_router(openclaw_router)
 app.include_router(system_router)
 app.include_router(autonomy_router)
 app.include_router(security_router)
+app.include_router(kakao_router)
 
 
 # ─── 서버 시작 시 초기화 ─────────────────────────────────
