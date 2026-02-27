@@ -31,6 +31,7 @@ services:
       - .env.production
     environment:
       - DATA_DIR=/app/data
+      - TZ=Asia/Seoul
     volumes:
       - api-logs:/app/logs
       - api-data:/app/data

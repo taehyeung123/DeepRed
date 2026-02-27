@@ -7,6 +7,9 @@ APScheduler 기반 자율 에이전트 크론잡
 import os
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+KST = ZoneInfo("Asia/Seoul")
 
 # ─── 스케줄러 인스턴스 ────────────────────────────────────
 _scheduler = None
@@ -262,6 +265,7 @@ def start_scheduler():
                     id=job["id"],
                     hour=job.get("hour", 0),
                     minute=job.get("minute", 0),
+                    timezone=KST,
                     replace_existing=True,
                 )
             elif job["trigger"] == "interval":
