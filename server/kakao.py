@@ -186,8 +186,8 @@ def _get_valid_token() -> Optional[str]:
 # ─── 메시지 전송 ──────────────────────────────────────────
 
 def is_kakao_available() -> bool:
-    """카카오 나에게 보내기 사용 가능 여부"""
-    return bool(KAKAO_REST_API_KEY) and bool(_tokens.get("access_token"))
+    """카카오 나에게 보내기 — 비활성화됨 (2026-03-20)"""
+    return False  # 카카오 알림 완전 비활성화
 
 
 def send_to_me(text: str, web_url: str = "https://deepred.vercel.app") -> dict:
@@ -195,6 +195,11 @@ def send_to_me(text: str, web_url: str = "https://deepred.vercel.app") -> dict:
     카카오 나에게 보내기 — 텍스트 메시지 전송
     알림은 안 뜨지만 '나와의 채팅'에 메시지가 기록됨
     """
+    # ⛔ 카카오 알림 비활성화 — 어디서 호출하든 차단
+    if not is_kakao_available():
+        print("⛔ 카카오 알림 비활성화 상태 — 메시지 전송 차단됨")
+        return {"success": False, "error": "카카오 알림이 비활성화되어 있습니다."}
+
     import urllib.request
     import urllib.parse
 
