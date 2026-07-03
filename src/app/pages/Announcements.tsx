@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pin, Heart, MessageCircle, Megaphone, Trophy, RefreshCw, FileText, Loader2, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -36,9 +36,33 @@ export function Announcements() {
     try {
       const res = await fetch(`${API_BASE}/api/announcements?limit=30`);
       const data = await res.json();
-      setAnnouncements(data.announcements || []);
+      const fetchedAnnouncements = data.announcements || [];
+      const hardcodedNotice = {
+        id: 'hardcoded-notice-1',
+        type: 'notice',
+        title: '[공지] 레드랭크 서비스 무료 오픈 및 AI 기능 업데이트 안내',
+        content: '안녕하세요, 레드랭크입니다.\n\n추후 별도의 공지가 있을 때까지 AI 기능을 제외한 모든 기능을 무료로 전면 오픈합니다!\n\n또한, 유저분들께서 최상의 서비스를 경험하실 수 있도록 AI 원고 작성부터 카드뉴스 제작, 그리고 AI 이미지 편집까지 다양한 AI 기능들을 최상의 서비스로 느끼실 수 있게 열심히 준비 중입니다.',
+        authorName: '레드랭크 팀',
+        timestamp: new Date().toISOString(),
+        likes: 0,
+        comments: 0,
+        pinned: true
+      };
+      setAnnouncements([hardcodedNotice, ...fetchedAnnouncements]);
     } catch (err) {
       console.error('Failed to load announcements:', err);
+      // Fallback in case API is down
+      setAnnouncements([{
+        id: 'hardcoded-notice-1',
+        type: 'notice',
+        title: '[공지] 레드랭크 서비스 무료 오픈 및 AI 기능 업데이트 안내',
+        content: '안녕하세요, 레드랭크입니다.\n\n추후 별도의 공지가 있을 때까지 AI 기능을 제외한 모든 기능을 무료로 전면 오픈합니다!\n\n또한, 유저분들께서 최상의 서비스를 경험하실 수 있도록 AI 원고 작성부터 카드뉴스 제작, 그리고 AI 이미지 편집까지 다양한 AI 기능들을 최상의 서비스로 느끼실 수 있게 열심히 준비 중입니다.',
+        authorName: '레드랭크 팀',
+        timestamp: new Date().toISOString(),
+        likes: 0,
+        comments: 0,
+        pinned: true
+      }]);
     } finally {
       setLoading(false);
     }
